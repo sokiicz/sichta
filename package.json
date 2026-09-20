@@ -12,7 +12,8 @@
     "typecheck": "tsc -b --noEmit",
     "cf:login": "cf.cmd login",
     "cf:deploy": "cf.cmd deploy",
-    "cf:dev": "cf.cmd dev"
+    "cf:dev": "cf.cmd dev",
+    "test:online": "node scripts/node22.mjs scripts/test-online.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

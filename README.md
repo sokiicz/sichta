@@ -46,7 +46,7 @@ npm test                              # herní logika, 103 testů
 npm run build                         # produkční build
 npm run cf:dev                        # backend lokálně na :8787
 npm run cf:deploy                     # nasazení workeru
-node scripts/test-online.mjs http://localhost:8787   # integrační test proti workeru (Node 22)
+npm run test:online -- https://sichta.sokiicz.workers.dev   # integrační test proti workeru
 node docs/balance-sim.mjs --games 6000  # simulace vyvážení
 ```
 
