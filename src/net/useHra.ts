@@ -19,6 +19,10 @@ export type Rezim = 'hotseat' | 'online';
 
 export interface Hra {
   rezim: Rezim;
+  /** Hot seat: v telefonu leží rozehraná partie, kterou jde obnovit. */
+  hotseatUlozena: { faze: string; hracu: number } | null;
+  hotseatObnovit: () => void;
+  hotseatZahodit: () => void;
   /** null, dokud hra nezačala, nebo než dorazí první zpráva ze serveru. */
   pohled: Pohled | null;
   poslat: (a: Akce) => void;
@@ -35,9 +39,34 @@ export interface Hra {
   hotseatHotovo: () => void;
 }
 
-/** Náhoda jednoho telefonu. Losuje se při načtení, každá partie má vlastní seed i identifikátor. */
-const SEED = Math.floor(Math.random() * 0xffffffff) || 1;
-const PARTIE = crypto.randomUUID();
+/**
+ * Rozehraná partie na jednom telefonu přežije obnovení stránky. Ukládá se
+ * celý stav i s náhodou, takže se po návratu losuje stejně, jako by se nic
+ * nestalo. Dohraná partie se neukládá, není kam se vracet.
+ */
+const KLIC_HOTSEAT = 'sichta:hotseat';
+
+interface UlozenyHotseat { stav: Stav; seed: number; partie: string; kdy: number }
+
+function nacistHotseat(): UlozenyHotseat | null {
+  try {
+    const r = localStorage.getItem(KLIC_HOTSEAT);
+    if (!r) return null;
+    const u = JSON.parse(r) as UlozenyHotseat;
+    return u && u.stav && typeof u.seed === 'number' ? u : null;
+  } catch { return null; }
+}
+
+function ulozitHotseat(u: UlozenyHotseat | null) {
+  try {
+    if (u) localStorage.setItem(KLIC_HOTSEAT, JSON.stringify(u));
+    else localStorage.removeItem(KLIC_HOTSEAT);
+  } catch { /* soukromé okno */ }
+}
+
+const nahodnySeed = () => Math.floor(Math.random() * 0xffffffff) || 1;
+
+type AkceNeboObnova = Akce | { typ: '__OBNOVIT'; stav: Stav };
 
 /** Fáze, kde se telefon podává dokola. Ostatní vidí celý stůl naráz. */
 const S_FRONTOU: ReadonlySet<string> = new Set(['rozdani', 'septanda', 'sichta', 'nominace', 'rada', 'noc']);
@@ -69,8 +98,41 @@ export function frontaProFazi(s: Stav): HracId[] {
 
 export function useHra(rezim: Rezim, kod: string | null, jmeno: string): Hra {
   // ------------------------------------------------------------- hot seat
-  const [stav, poslatLokalne] = useReducer((s: Stav, a: Akce) => reducer(s, a, SEED), prazdnyStav());
+  // Náhoda jednoho telefonu: losuje se při načtení, obnovená partie si přinese svou.
+  const seed = useRef(nahodnySeed());
+  const partie = useRef<string>(crypto.randomUUID());
+  const [stav, poslatLokalne] = useReducer(
+    (s: Stav, a: AkceNeboObnova) => (a.typ === '__OBNOVIT' ? a.stav : reducer(s, a, seed.current)),
+    prazdnyStav(),
+  );
   const [fronta, setFronta] = useState<HracId[]>([]);
+  const [ulozena, setUlozena] = useState<UlozenyHotseat | null>(() => nacistHotseat());
+
+  // Každá změna stavu se uloží. Šatna bez hráčů a dohraná partie se mažou.
+  useEffect(() => {
+    if (rezim !== 'hotseat') return;
+    const prazdna = stav.faze === 'satna' && stav.hraci.length === 0;
+    if (prazdna) return;
+    if (stav.faze === 'konec') { ulozitHotseat(null); setUlozena(null); return; }
+    const u = { stav, seed: seed.current, partie: partie.current, kdy: Date.now() };
+    ulozitHotseat(u);
+    setUlozena(u);
+  }, [rezim, stav]);
+
+  const hotseatObnovit = useCallback(() => {
+    const u = nacistHotseat();
+    if (!u) return;
+    seed.current = u.seed;
+    partie.current = u.partie;
+    poslatLokalne({ typ: '__OBNOVIT', stav: u.stav });
+  }, []);
+
+  const hotseatZahodit = useCallback(() => {
+    ulozitHotseat(null);
+    setUlozena(null);
+    seed.current = nahodnySeed();
+    partie.current = crypto.randomUUID();
+  }, []);
 
   useEffect(() => {
     if (rezim !== 'hotseat') return;
@@ -116,7 +178,7 @@ export function useHra(rezim: Rezim, kod: string | null, jmeno: string): Hra {
       return;
     }
     // Na jednom telefonu dává partii identifikátor aplikace, online worker.
-    poslatLokalne(a.typ === 'ZACIT' ? { ...a, partie: PARTIE } : a);
+    poslatLokalne(a.typ === 'ZACIT' ? { ...a, partie: partie.current } : a);
   }, [rezim]);
 
   const pohled = useMemo<Pohled | null>(() => {
@@ -130,6 +192,11 @@ export function useHra(rezim: Rezim, kod: string | null, jmeno: string): Hra {
 
   return {
     rezim,
+    hotseatUlozena: ulozena && ulozena.stav.faze !== 'konec' && ulozena.stav.hraci.length > 0
+      ? { faze: ulozena.stav.faze, hracu: ulozena.stav.hraci.length }
+      : null,
+    hotseatObnovit,
+    hotseatZahodit,
     pohled,
     poslat,
     sit,

@@ -69,19 +69,72 @@ function useOdpocetServeru(konecFaze: number | null, posun: number): number | nu
  * přeskočilo celou fázi.
  */
 function useOdpocetLokalni(klic: string, delka: number, bezi: boolean, onDoslo: () => void): number {
-  const [zbyva, setZbyva] = useState(delka);
+  // Zbývající čas se drží spolu s klíčem fáze, ke které patří. Na renderu,
+  // kde se fáze změní, by jinak ještě platila nula z minulého odpočtu a
+  // posun by se zavolal podruhé, takže by se nová fáze přeskočila.
+  const [odpocet, setOdpocet] = useState({ klic, zbyva: delka });
   const start = useRef(Date.now());
-  useEffect(() => { start.current = Date.now(); setZbyva(delka); }, [klic, delka, bezi]);
+  const zbyva = odpocet.klic === klic ? odpocet.zbyva : delka;
+
+  useEffect(() => {
+    start.current = Date.now();
+    setOdpocet({ klic, zbyva: delka });
+  }, [klic, delka, bezi]);
+
   useEffect(() => {
     if (!bezi || delka <= 0) return;
-    const t = setInterval(() => setZbyva(Math.max(0, delka - Math.floor((Date.now() - start.current) / 1000))), 500);
+    const t = setInterval(() => {
+      const z = Math.max(0, delka - Math.floor((Date.now() - start.current) / 1000));
+      setOdpocet({ klic, zbyva: z });
+    }, 500);
     return () => clearInterval(t);
   }, [klic, delka, bezi]);
+
+  // Posun se volá nejvýš jednou na fázi.
+  const doslo = useRef<string | null>(null);
   useEffect(() => {
-    if (bezi && delka > 0 && zbyva === 0) onDoslo();
-  }, [zbyva, bezi, delka, onDoslo]);
+    if (!bezi || delka <= 0 || zbyva !== 0 || doslo.current === klic) return;
+    doslo.current = klic;
+    onDoslo();
+  }, [zbyva, bezi, delka, klic, onDoslo]);
+
   return zbyva;
 }
+
+// ---------------------------------------------------------------- sezení
+
+/**
+ * Online sezení: kód místnosti a přezdívka. Token drží klient v localStorage
+ * už dřív, ale bez kódu a jména se po obnovení stránky nemá kam vrátit.
+ * Čerstvé sezení se obnoví samo, starší se jen nabídne na úvodu.
+ */
+const KLIC_SEZENI = 'sichta:sezeni';
+const CERSTVE_SEZENI = 3 * 60 * 60 * 1000;
+
+interface Sezeni { kod: string; jmeno: string; kdy: number }
+
+function nacistSezeni(): Sezeni | null {
+  try {
+    const r = localStorage.getItem(KLIC_SEZENI);
+    if (!r) return null;
+    const s = JSON.parse(r) as Sezeni;
+    return s && typeof s.kod === 'string' && typeof s.jmeno === 'string' ? s : null;
+  } catch { return null; }
+}
+
+function ulozitSezeni(s: Sezeni | null) {
+  try {
+    if (s) localStorage.setItem(KLIC_SEZENI, JSON.stringify(s));
+    else localStorage.removeItem(KLIC_SEZENI);
+  } catch { /* soukromé okno */ }
+}
+
+const NAZVY_FAZI: Record<string, string> = {
+  satna: 'v šatně', rozdani: 'u rozdání rolí', predel: 'na začátku šichty', zadani: 'u zadání šichty',
+  sichta: 'na šichtě', vysledek: 'u výsledku šichty', septanda: 'u šeptandy', rozprava: 'v rozpravě',
+  nominace: 'u nominací', kandidati: 'před radou', posledni_slovo: 'u posledního slova', rada: 'v radě',
+  hlasy: 'u odhalení hlasů', vyhosteni: 'u vyhoštění', noc: 'v noci', rano: 'ráno',
+};
 
 // ---------------------------------------------------------------- aplikace
 
@@ -98,6 +151,7 @@ export default function App() {
 
   const hra = useHra(rezim, kod, jmeno);
   const { pohled, poslat, naRade, hotseatStav, hotseatDal, hotseatHotovo, posunHodin } = hra;
+  const [stareSezeni, setStareSezeni] = useState<Sezeni | null>(null);
 
   const [prevzal, setPrevzal] = useState(false);
   const [vyber, setVyber] = useState<string | null>(null);
@@ -126,17 +180,43 @@ export default function App() {
 
   // Odkaz ze šatny: /?k=ABC123 přeskočí ťukání kódu rovnou na přezdívku.
   // Kód se z adresy hned uklidí, aby ho obnovení stránky nevrátilo do hry, ze
-  // které už člověk odešel.
+  // které už člověk odešel. Bez odkazu se zkusí vrátit do rozehraného sezení.
   useEffect(() => {
     const z = new URLSearchParams(window.location.search).get('k');
-    if (!z || !platnyKod(z)) return;
-    window.history.replaceState(null, '', window.location.pathname);
-    if (!zakladnaUrl()) return;
-    setRezim('online');
-    setZalozit(false);
-    setKod(z.toUpperCase());
-    setKrok('prezdivka');
+    if (z && platnyKod(z)) {
+      window.history.replaceState(null, '', window.location.pathname);
+      if (!zakladnaUrl()) return;
+      ulozitSezeni(null);
+      setRezim('online');
+      setZalozit(false);
+      setKod(z.toUpperCase());
+      setKrok('prezdivka');
+      return;
+    }
+    const s = nacistSezeni();
+    if (!s || !zakladnaUrl()) return;
+    if (Date.now() - s.kdy < CERSTVE_SEZENI) {
+      setRezim('online');
+      setKod(s.kod);
+      setJmeno(s.jmeno);
+      setKrok('hra');
+    } else {
+      setStareSezeni(s);
+    }
   }, []);
+
+  // Online sezení se ukládá, dokud hra běží, ať se po obnovení stránky má kam vrátit.
+  useEffect(() => {
+    if (!jeOnline || !kod || !jmeno || krok !== 'hra') return;
+    ulozitSezeni({ kod, jmeno, kdy: Date.now() });
+  }, [jeOnline, kod, jmeno, krok, pohled?.faze]);
+
+  const opustitSezeni = () => {
+    ulozitSezeni(null);
+    setStareSezeni(null);
+    setKod(null);
+    setKrok('uvod');
+  };
 
   const zivych = pohled?.hraci.filter((h) => h.zivy).length ?? 0;
   const delka = pohled ? delkaFaze(pohled.faze, zivych, pohled.stul.kandidati.length) : 0;
@@ -176,13 +256,27 @@ export default function App() {
   }
 
   if (krok === 'uvod') {
+    const ulozena = hra.hotseatUlozena;
+    const rozehrana = ulozena
+      ? `Na tomhle telefonu je rozehraná partie: ${ulozena.hracu} hráčů, právě ${NAZVY_FAZI[ulozena.faze] ?? ulozena.faze}.`
+      : stareSezeni
+        ? `Naposledy jsi hrál online v šichtě ${stareSezeni.kod} jako ${stareSezeni.jmeno}.`
+        : null;
+    const pokracovat = ulozena
+      ? () => { hra.hotseatObnovit(); setRezim('hotseat'); setKrok(ulozena.faze === 'satna' ? 'satna' : 'hra'); }
+      : stareSezeni
+        ? () => { setRezim('online'); setKod(stareSezeni.kod); setJmeno(stareSezeni.jmeno); setStareSezeni(null); setKrok('hra'); }
+        : undefined;
+    const nova = () => { hra.hotseatZahodit(); ulozitSezeni(null); setStareSezeni(null); setChyba(null); };
     return (
       <Uvod
         siteDostupna={siteDostupna}
         chyba={chyba}
-        onZalozit={() => { setChyba(null); setRezim('online'); setZalozit(true); setKrok('prezdivka'); }}
-        onPripojit={() => { setRezim('online'); setZalozit(false); setKrok('kod'); }}
-        onHotSeat={() => { setRezim('hotseat'); setKrok('prezdivka'); }}
+        rozehrana={rozehrana}
+        onPokracovat={pokracovat}
+        onZalozit={() => { nova(); setRezim('online'); setZalozit(true); setKrok('prezdivka'); }}
+        onPripojit={() => { nova(); setRezim('online'); setZalozit(false); setKrok('kod'); }}
+        onHotSeat={() => { nova(); setRezim('hotseat'); setKrok('prezdivka'); }}
         onPravidla={doPravidel}
       />
     );
@@ -244,11 +338,11 @@ export default function App() {
   }
 
   if (hra.chyba) {
-    return <Nepustili kod={kod ?? ''} duvod={hra.chyba} onZpet={() => { setKod(null); setKrok('uvod'); }} />;
+    return <Nepustili kod={kod ?? ''} duvod={hra.chyba} onZpet={opustitSezeni} />;
   }
 
   if (!pohled) {
-    return <Pripojuji kod={kod ?? ''} stav={hra.sit ?? 'pripojuji'} onZpet={() => { setKod(null); setKrok('uvod'); }} />;
+    return <Pripojuji kod={kod ?? ''} stav={hra.sit ?? 'pripojuji'} onZpet={opustitSezeni} />;
   }
 
   const p: Pohled = pohled;
@@ -603,7 +697,11 @@ export default function App() {
               cuch={kn.cuch ? { jmeno: jm(kn.cuch.id), popis: `${kn.cuch.trefil} ze ${kn.cuch.z} správně.` } : null}
               jsemZakladatel={jsemZakladatel}
               onPrubeh={() => setKrok('prubeh')}
-              onZnovu={() => { if (jeOnline) poslat({ typ: 'ZNOVU' }); else window.location.reload(); }}
+              onZnovu={() => {
+                if (jeOnline) { poslat({ typ: 'ZNOVU' }); return; }
+                hra.hotseatZahodit();
+                window.location.reload();
+              }}
             />
           );
         }

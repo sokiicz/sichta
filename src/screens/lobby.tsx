@@ -9,8 +9,11 @@ import { jeDivokaSestava } from '../game/rules';
 
 // ---------------------------------------------------------------- úvod
 
-export function Uvod({ siteDostupna, chyba, onZalozit, onPripojit, onHotSeat, onPravidla }: {
+export function Uvod({ siteDostupna, chyba, rozehrana, onPokracovat, onZalozit, onPripojit, onHotSeat, onPravidla }: {
   siteDostupna: boolean; chyba?: string | null;
+  /** V telefonu leží rozehraná partie. Nabídne se dřív než cokoliv nového. */
+  rozehrana?: string | null;
+  onPokracovat?: () => void;
   onZalozit: () => void; onPripojit: () => void; onHotSeat: () => void; onPravidla: () => void;
 }) {
   return (
@@ -26,6 +29,13 @@ export function Uvod({ siteDostupna, chyba, onZalozit, onPripojit, onHotSeat, on
       </div>
 
       {chyba && <Poznamka varovna>{chyba}</Poznamka>}
+
+      {rozehrana && onPokracovat && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <Tlacitko druh="hlavni" onClick={onPokracovat} vyska={78} male>POKRAČOVAT V ROZEHRANÉ</Tlacitko>
+          <Poznamka>{rozehrana}</Poznamka>
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
         {siteDostupna ? (
