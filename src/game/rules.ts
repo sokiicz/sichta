@@ -19,6 +19,11 @@ interface Sestava {
  * sabotérem existuje jen pět možných světů, takže je bot nevyřeší jako strop,
  * ale jako rovnici. Jeho 94 % o skutečném stole nevypovídá nic.
  *
+ * Druhé číslo u každého řádku je podíl partií, které skončí vyčerpáním limitu
+ * šicht. Dřív byl limit tak vysoký, že se na něj nedošlo skoro nikdy (2 až 4 %),
+ * takže bylo počítadlo "zbývá šicht" jen dekorace a sabotéři neměli druhou
+ * cestu k výhře. Teď na něj dojde pětina až polovina partií.
+ *
  * Rozhodovalo se proto podle jediného, co se tam měřit dá, a to je odpadávání:
  *
  *   2 sabotéři  2,4 kola, 1,5 živého z 5, 68 % partií končí vybitím stolu
@@ -29,14 +34,14 @@ interface Sestava {
  * Tohle chce playtest, ne další simulaci.
  */
 const SESTAVY: Record<number, Sestava> = {
-  5: { saboteri: 1, limitSicht: 4, smenyNaKolo: 1 },   // krátká a divoká, viz níž
-  6: { saboteri: 2, limitSicht: 6, smenyNaKolo: 1 },   // 50 %, 3,0 kola
-  7: { saboteri: 2, limitSicht: 3, smenyNaKolo: 1 },   // 47 %, 2,8 kola
-  8: { saboteri: 2, limitSicht: 3, smenyNaKolo: 1 },   // 43 %, 2,9 kola
-  9: { saboteri: 3, limitSicht: 6, smenyNaKolo: 2 },   // 50 %, 4,2 kola
-  10: { saboteri: 3, limitSicht: 6, smenyNaKolo: 1 },  // 52 %, 4,7 kola
-  11: { saboteri: 3, limitSicht: 5, smenyNaKolo: 1 },  // 46 %, 4,7 kola
-  12: { saboteri: 4, limitSicht: 8, smenyNaKolo: 2 },  // 50 %, 5,6 kola
+  5: { saboteri: 1, limitSicht: 3, smenyNaKolo: 1 },   // viz komentář výš
+  6: { saboteri: 2, limitSicht: 4, smenyNaKolo: 1 },   // 48 %, limit padne v 6 %
+  7: { saboteri: 2, limitSicht: 3, smenyNaKolo: 1 },   // 46 %, limit padne v 33 %
+  8: { saboteri: 2, limitSicht: 3, smenyNaKolo: 1 },   // 44 %, limit padne v 54 %
+  9: { saboteri: 3, limitSicht: 5, smenyNaKolo: 2 },   // 44 %, limit padne v 11 %
+  10: { saboteri: 3, limitSicht: 5, smenyNaKolo: 1 },  // 44 %, limit padne v 21 %
+  11: { saboteri: 3, limitSicht: 5, smenyNaKolo: 1 },  // 44 %, limit padne v 33 %
+  12: { saboteri: 4, limitSicht: 6, smenyNaKolo: 2 },  // 41 %, limit padne v 20 %
 };
 
 /** Pětka se dá hrát, ale vyvážit nejde. Stůl si to zaslouží vědět dopředu. */

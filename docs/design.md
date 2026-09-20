@@ -239,6 +239,37 @@ utnout.** Kdo už chce dál, je veřejně vidět: je to nátlak sám o sobě a z
 informace do hry, protože kdo pořád spěchá pryč od rozpravy, si jí možná moc
 nepřeje. Odvolat to jde, dokud většina nepadne.
 
+### 3.5c Nominovat nikoho a zdržet se
+
+Obojí je **plnohodnotný tah, ne nečinnost.** Stůl musí poznat rozdíl mezi
+"rozhodl se nikoho nenavrhnout" a "ještě neodevzdal", jinak se na člověka
+čeká a počty odevzdaných lžou.
+
+Když nenominuje nikdo, to kolo nikdo neodejde. Stejně tak při rovnosti hlasů.
+Kolo bez vyhoštění je legitimní výsledek, ne zaseknutá hra.
+
+Bez tohohle by musel každý někoho navrhnout, což zaprvé nutí lidi střílet
+naslepo a zadruhé rozbíjí šeptandu: věta "v kole 2 nominoval právě jeden
+sabotér" neříká nic, když museli nominovat všichni.
+
+Stín, který se zdrží, svůj jediný hlas neutratí.
+
+### 3.5d Zápisník
+
+Každý má vlastní a nikdo jiný do něj nevidí. Drží se **jen v prohlížeči toho
+telefonu, nikdy na serveru**: je to soukromá poznámka a co se neposílá,
+nemůže uniknout. Na jednom telefonu se klíčuje podle toho, kdo ho zrovna drží.
+
+### 3.5e Nastavení hry
+
+Mění se jen v šatně, po rozdání rolí už ne. Měnit pravidla za běhu je
+nejrychlejší způsob, jak partu naštvat.
+
+| Volba | Výchozí | Co dělá |
+|---|---|---|
+| Šeptanda pro všechny | zapnuto | Vypnuto je špionská varianta: sabotér nedostane větu a musí si vymyslet i to, že nějakou má. Ostřejší, ale stačí jednou zaváhat. |
+| Noční vraždy | zapnuté | Vypnuto se odchází jen vyhoštěním. Hra je delší, zůstane víc lidí a častěji dojde na limit šicht. Hodí se k vypnuté šeptandě pro sabotéry. |
+
 ### 3.6 Stíny (vyřazení hráči)
 
 Vyřazený zůstává sedět u stolu a:

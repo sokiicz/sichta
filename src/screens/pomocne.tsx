@@ -11,7 +11,8 @@ const PRAVIDLA = [
   { nadpis: 'O CO JDE', text: 'Část party tajně kazí šichty. Pracanti je musí vyhostit dřív, než dojdou kola.', akcent: true },
   { nadpis: 'KOLO', text: 'Parta jde na šichtu a tajně volí. Pak se mluví, nominuje a hlasuje. Pak je noc.' },
   { nadpis: 'SABOTÁŽ', text: 'Padlá šichta dá sabotérům jednu odměnu: vraždu, imunitu pro kohokoliv, nebo tmu nad hlasováním. Vraždit dvakrát po sobě nejde.' },
-  { nadpis: 'STÍNY', text: 'Kdo odejde, zůstává u stolu a mluví dál. Nenominuje a má jeden hlas na celý zbytek hry.' },
+  { nadpis: 'RADA', text: 'Nominovat nikoho i zdržet se hlasování jsou plnohodnotné tahy. Když se stůl neshodne, to kolo nikdo neodchází.' },
+  { nadpis: 'STÍNY', text: 'Kdo odejde, zůstává u stolu a mluví dál. Nenominuje a má jeden hlas na celý zbytek hry. Zdrží-li se, hlas neutratí.' },
   { nadpis: 'VÝHRA', text: 'Pracanti vyhrají vyhoštěním posledního sabotéra. Sabotéři vyhrají, když jim dojdou šichty a aspoň jeden žije.', patina: true },
 ];
 
@@ -49,7 +50,7 @@ export function Pravidla({ onZpet }: { onZpet: () => void }) {
         </div>
       </Rostouci>
 
-      <Blok><Veta>Během rozpravy mají telefony ležet lícem dolů. Jinak se z toho stane listování, ne hádka.</Veta></Blok>
+      <Blok><Veta>Během rozpravy mají telefony ležet lícem dolů. Jinak se z toho stane listování, ne hádka. Na poznámky je tlačítko vpravo dole, zápisník vidíš jen ty.</Veta></Blok>
       <Tlacitko vyska={76} onClick={onZpet}>ROZUMÍM</Tlacitko>
     </Obrazovka>
   );

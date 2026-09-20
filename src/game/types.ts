@@ -64,14 +64,47 @@ export interface Kolo {
   podezreli: Record<HracId, HracId>;
   /** Kdo chce ukončit rozpravu dřív. Veřejné, je to nátlak sám o sobě. */
   chtejiDal: HracId[];
+  /**
+   * Kdo vědomě nenominoval, respektive se zdržel hlasování.
+   *
+   * Nestačí koukat na prázdné místo v nominacích: stůl musí poznat rozdíl
+   * mezi "rozhodl se nikoho nenavrhnout" a "ještě neodevzdal". Jinak se na
+   * něj čeká a počty odevzdaných lžou.
+   */
+  beznominace: HracId[];
+  zdrzeliSe: HracId[];
 }
 
+/**
+ * Volby, které se nastavují před rozdáním rolí a pak už se nemění.
+ *
+ * Jsou tu jen věci, které jsou opravdu postavené. Nápady pro v2 a v3
+ * (tajný sabotér, umlčení místo vyřazení, předák vybírá partu) sem patřit
+ * budou, až budou fungovat, ne dřív.
+ */
 export interface Nastaveni {
-  mistrVybiraPartu: boolean;
-  tajnySaboter: boolean;
-  umlceniMistoVyrazeni: boolean;
+  /**
+   * Dostane šeptandu i sabotér?
+   *
+   * `true` (výchozí): dostanou ji všichni. Sabotérovi je k ničemu, protože
+   * role zná, takže si musí vymyslet jinou. Nikdo se nedá chytit na to,
+   * že "žádnou nemá".
+   *
+   * `false` je špionská varianta: sabotér nedostane nic a musí si vymyslet
+   * i to, že nějakou má. Je to ostřejší, ale nebezpečnější, protože stačí
+   * jednou zaváhat. Do dvojice s tím se hodí vypnout vraždy, jinak pracanti
+   * odpadají rychleji, než stihnou lháře nachytat.
+   */
+  septandaProSabotery: boolean;
+  /**
+   * Smí sabotéři vraždit?
+   *
+   * Vypnuto znamená, že se odchází jen vyhoštěním. Hra je delší, u stolu
+   * zůstane sedět víc lidí a častěji dojde na limit šicht. Sabotéři tím
+   * přicházejí o nejsilnější odměnu, takže se to hodí tam, kde mají navrch.
+   */
+  vrazdy: boolean;
 }
-
 export interface Stav {
   faze: Faze;
   hraci: Hrac[];
@@ -116,6 +149,8 @@ export type Akce =
   | { typ: 'PREDAK_ROZHODL'; cil: HracId }
   | { typ: 'ZAPSAT_PODEZRELEHO'; id: HracId; cil: HracId }
   | { typ: 'CHCI_DAL'; id: HracId }
+  | { typ: 'NENOMINUJU'; id: HracId }
+  | { typ: 'ZDRZUJU_SE'; id: HracId }
   | { typ: 'DALSI_FAZE' }
   | { typ: 'ODPOJIL_SE'; id: HracId }
   | { typ: 'PRIPOJIL_SE'; id: HracId }

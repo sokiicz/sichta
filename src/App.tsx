@@ -10,6 +10,8 @@ import { Hlasy, Kandidati, Nominace, PosledniSlovo, Rada, Rozprava, Vyhosteni } 
 import { Obet, Odmeny, Podezrely, Rano } from './screens/noc';
 import { Konec, Odhaleni, Prehled, type KoloPrehled, type Odhaleny } from './screens/konec';
 import { Pauza, Pravidla } from './screens/pomocne';
+import { NastaveniHry } from './screens/nastaveni';
+import { PoskytniZapisnik, Zapisnik } from './ui/zapisnik';
 
 import { delkaFaze } from './game/rules';
 import type { HracId, Odmena } from './game/types';
@@ -58,7 +60,7 @@ function useOdpocet(klic: string, delka: number, bezi: boolean, onDoslo: (() => 
 
 // ---------------------------------------------------------------- aplikace
 
-type Krok = 'uvod' | 'prezdivka' | 'kod' | 'satna' | 'hra' | 'pravidla' | 'odhaleni' | 'prubeh';
+type Krok = 'uvod' | 'prezdivka' | 'kod' | 'satna' | 'hra' | 'pravidla' | 'nastaveni' | 'odhaleni' | 'prubeh';
 
 export default function App() {
   const [rezim, setRezim] = useState<Rezim>('hotseat');
@@ -125,6 +127,19 @@ export default function App() {
 
   if (krok === 'pravidla') return <Pravidla onZpet={() => setKrok(predchozi)} />;
 
+  if (krok === 'nastaveni') {
+    const nast = jeOnline ? pohled?.nastaveni : hotseatStav?.nastaveni;
+    if (nast) {
+      return (
+        <NastaveniHry
+          nastaveni={nast}
+          onPrepnout={(klic, hodnota) => poslat({ typ: 'ZMENIT_NASTAVENI', nastaveni: { [klic]: hodnota } })}
+          onZpet={() => setKrok(jeOnline ? 'hra' : 'satna')}
+        />
+      );
+    }
+  }
+
   if (krok === 'uvod') {
     return (
       <Uvod
@@ -185,6 +200,7 @@ export default function App() {
         popisekAkce="PŘIDAT HRÁČE"
         onPravidla={doPravidel}
         onNastaveni={() => setKrok('prezdivka')}
+        onNastaveniHry={() => setKrok('nastaveni')}
         onZacit={() => { poslat({ typ: 'ZACIT' }); setKrok('hra'); }}
       />
     );
@@ -205,6 +221,7 @@ export default function App() {
         jsemZakladatel={p.hraci.find((h) => h.id === p.ja.id)?.zakladatel ?? false}
         onPravidla={doPravidel}
         onNastaveni={() => {}}
+        onNastaveniHry={() => setKrok('nastaveni')}
         onZacit={() => poslat({ typ: 'ZACIT' })}
       />
     );
@@ -318,10 +335,13 @@ export default function App() {
           <Nominace
             kdo={p.hraci.map((h) => ({ id: h.id, jmeno: h.jmeno, zivy: h.zivy }))}
             jaId={ja} vybrany={vyber ?? p.ja.nominoval} sekundy={cas}
+            nenominuju={p.ja.nenominuju && !vyber}
             onVybrat={setVyber}
+            onNikoho={() => { setVyber(null); poslat({ typ: 'NENOMINUJU', id: ja }); }}
             onPotvrdit={() => {
               const c = vyber ?? p.ja.nominoval;
               if (c) poslat({ typ: 'NOMINOVAT', id: ja, cil: c });
+              else poslat({ typ: 'NENOMINUJU', id: ja });
               hotovo();
             }}
           />
@@ -351,10 +371,13 @@ export default function App() {
             kandidati={p.stul.kandidati.map((id) => ({ id, jmeno: jm(id), zivy: true }))}
             vybrany={vyber ?? p.ja.hlasoval} sekundy={cas}
             jsemStin={!(jaHrac?.zivy ?? true)} hlasUtracen={jaHrac?.hlasStinuUtracen ?? false}
+            zdrzelSe={p.ja.zdrzelSeHlasovani && !vyber}
             onVybrat={setVyber}
+            onZdrzet={() => { setVyber(null); poslat({ typ: 'ZDRZUJU_SE', id: ja }); }}
             onPotvrdit={() => {
               const c = vyber ?? p.ja.hlasoval;
               if (c) poslat({ typ: 'HLASOVAT', id: ja, cil: c });
+              else poslat({ typ: 'ZDRZUJU_SE', id: ja });
               hotovo();
             }}
           />
@@ -383,7 +406,7 @@ export default function App() {
             kolo={p.kolo}
             kdo={p.stul.vyhosteny ? jm(p.stul.vyhosteny) : null}
             role={p.stul.roleVyhosteneho}
-            zbyvaSaboteru={p.pocetSaboteru}
+            zbyvaSaboteru={p.stul.zbyvaSaboteru}
             zivych={zivi.length}
             podil={podil} onPreskocit={preskocit}
           />
@@ -489,9 +512,16 @@ export default function App() {
     }
   })();
 
+  // Zápisník se nabízí od zadání šichty dál. Dřív není co si psát a na
+  // obrazovce s rolí by jen odváděl pozornost.
+  const zapisnikAktivni = !['rozdani', 'predel', 'satna'].includes(p.faze);
+
   return (
     <PredejDrzitele jmeno={jeOnline ? null : naRade ? jm(naRade) : null}>
-      {obrazovka}
+      <PoskytniZapisnik kod={kod} hracId={ja} jmeno={jm(ja)} aktivni={zapisnikAktivni}>
+        {obrazovka}
+        <Zapisnik />
+      </PoskytniZapisnik>
     </PredejDrzitele>
   );
 }

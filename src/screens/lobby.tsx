@@ -125,9 +125,9 @@ export function Prezdivka({ vychozi, onHotovo, onZpet, onPravidla }: {
 
 // ---------------------------------------------------------------- šatna
 
-export function Satna({ kod, odkaz, hraci, jsemZakladatel, onZacit, onNastaveni, onPravidla, popisekAkce = 'NASTAVENÍ' }: {
+export function Satna({ kod, odkaz, hraci, jsemZakladatel, onZacit, onNastaveni, onNastaveniHry, onPravidla, popisekAkce = 'NASTAVENÍ' }: {
   kod: string; odkaz?: string | null; hraci: Hrac[]; jsemZakladatel: boolean;
-  onZacit: () => void; onNastaveni: () => void; onPravidla: () => void;
+  onZacit: () => void; onNastaveni: () => void; onNastaveniHry: () => void; onPravidla: () => void;
   popisekAkce?: string;
 }) {
   const dost = hraci.length >= MIN_HRACU;
@@ -225,9 +225,12 @@ export function Satna({ kod, odkaz, hraci, jsemZakladatel, onZacit, onNastaveni,
       )}
 
       {jsemZakladatel ? (
-        <Tlacitko druh={dost ? 'hlavni' : 'tichy'} vyska={82} onClick={dost ? onZacit : undefined}>
-          {dost ? 'ZAČÍT ŠICHTU' : `CHYBÍ ${MIN_HRACU - hraci.length}`}
-        </Tlacitko>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+          <Tlacitko druh={dost ? 'hlavni' : 'tichy'} vyska={82} onClick={dost ? onZacit : undefined}>
+            {dost ? 'ZAČÍT ŠICHTU' : `CHYBÍ ${MIN_HRACU - hraci.length}`}
+          </Tlacitko>
+          <Tlacitko druh="tichy" vyska={56} onClick={onNastaveniHry}>NASTAVENÍ HRY</Tlacitko>
+        </div>
       ) : (
         <Veta>Až vás bude dost, zakladatel šichtu spustí.</Veta>
       )}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { pohledPro } from './pohled';
 import { prazdnyStav, reducer, dostupneOdmeny, smiKazit, zivi, ziviSaboteri, ziviPracanti, posledniSmena, noveKolo } from './machine';
 import { sestavaPro, velikostParty, MIN_HRACU, MAX_HRACU } from './rules';
 import type { Akce, Stav } from './types';
@@ -365,5 +366,68 @@ describe('zkrácení rozpravy hlasováním', () => {
     expect(jinde.faze).not.toBe('rozprava');
     const x = posli(jinde, { typ: 'CHCI_DAL', id: 'h0' });
     expect(x.aktualni?.chtejiDal ?? []).toHaveLength(0);
+  });
+});
+
+describe('nikoho nenominovat a zdržet se', () => {
+  const doFaze = (pocet: number, faze: string): Stav => {
+    let s = prazdnyStav();
+    for (let i = 0; i < pocet; i++) s = posli(s, { typ: 'PRIDAT_HRACE', id: `h${i}`, jmeno: `H${i}` });
+    s = posli(s, { typ: 'ZACIT' });
+    for (const h of s.hraci) s = posli(s, { typ: 'PRIPRAVEN', id: h.id });
+    for (let i = 0; i < 40 && s.faze !== faze; i++) {
+      if (s.faze === 'sichta') {
+        const sm = s.aktualni!.smeny[s.aktualni!.smeny.length - 1]!;
+        for (const id of sm.parta) s = posli(s, { typ: 'VOLBA_SICHTY', id, volba: 'kazit' });
+      }
+      // bez nominací se do rady nikdy nedojde, kandidáti by byli prázdní
+      if (s.faze === 'nominace' && faze !== 'nominace') {
+        const zivy = zivi(s);
+        for (const h of zivy) s = posli(s, { typ: 'NOMINOVAT', id: h.id, cil: zivy.find((x) => x.id !== h.id)!.id });
+      }
+      s = dal(s);
+    }
+    return s;
+  };
+
+  it('kdo nenominuje, je započítaný mezi odevzdané', () => {
+    const s = doFaze(7, 'nominace');
+    const x = posli(s, { typ: 'NENOMINUJU', id: 'h0' });
+    expect(x.aktualni?.beznominace).toContain('h0');
+    expect(pohledPro(x, 'h1').stul.odevzdali).toContain('h0');
+  });
+
+  it('když nenominuje nikdo, nikdo neodejde', () => {
+    let s = doFaze(7, 'nominace');
+    for (const h of zivi(s)) s = posli(s, { typ: 'NENOMINUJU', id: h.id });
+    s = dal(s);
+    expect(s.faze).toBe('vyhosteni');
+    expect(s.aktualni?.vyhosteny).toBeNull();
+  });
+
+  it('nominace přebije dřívější rozhodnutí nenominovat', () => {
+    const s = doFaze(7, 'nominace');
+    let x = posli(s, { typ: 'NENOMINUJU', id: 'h0' });
+    x = posli(x, { typ: 'NOMINOVAT', id: 'h0', cil: 'h1' });
+    expect(x.aktualni?.beznominace).not.toContain('h0');
+    expect(x.aktualni?.nominace['h0']).toBe('h1');
+  });
+
+  it('kdo se zdrží, je odevzdaný a nikoho tím nevyhostí', () => {
+    let s = doFaze(7, 'rada');
+    expect(s.aktualni?.kandidati.length).toBeGreaterThan(0);
+    for (const h of zivi(s)) s = posli(s, { typ: 'ZDRZUJU_SE', id: h.id });
+    expect(pohledPro(s, 'h0').stul.odevzdali.length).toBe(zivi(s).length);
+    s = dal(s);
+    expect(s.aktualni?.vyhosteny).toBeNull();
+  });
+
+  it('stín, který se zdrží, o svůj jediný hlas nepřijde', () => {
+    let s = doFaze(7, 'rada');
+    const stin = s.hraci.find((h) => !h.zivy);
+    if (!stin) return;
+    s = posli(s, { typ: 'ZDRZUJU_SE', id: stin.id });
+    s = dal(s);
+    expect(s.hraci.find((h) => h.id === stin.id)?.hlasStinuUtracen).toBe(false);
   });
 });

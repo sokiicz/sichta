@@ -3,7 +3,7 @@ import { rng } from './random';
 import { prazdnyStav, reducer, zivi } from './machine';
 import { pohledPro } from './pohled';
 import {
-  platiTvrzeni, POCET_PRAVD, septandaPro, vetaZTvrzeni,
+  platiTvrzeni, POCET_PRAVD, rozdatSeptandu, septandaPro, vetaZTvrzeni,
   type KontextSeptandy, type Tvrzeni,
 } from './septanda';
 import type { Akce, HracId, Stav } from './types';
@@ -24,6 +24,7 @@ function kontextZeStavu(s: Stav): KontextSeptandy {
     historie: s.historie,
     smeny: s.aktualni?.smeny ?? [],
     kolo: s.aktualni?.cislo ?? 0,
+    proSabotery: s.nastaveni.septandaProSabotery,
   };
 }
 
@@ -187,6 +188,7 @@ describe('Šeptanda', () => {
       historie: [],
       smeny: [],
       kolo: 1,
+      proSabotery: true,
     };
     const lzi: Tvrzeni[] = [
       { typ: 'cisty', kdo: 'a' },
@@ -222,6 +224,34 @@ describe('Šeptanda', () => {
       expect(v).not.toMatch(/(BÁRA|TOMÁŠ) [a-zěščřžýáíé]+la\b/);
       expect(v.endsWith('.')).toBe(true);
       expect(v).not.toContain('—');
+    }
+  });
+});
+
+describe('Špionská varianta', () => {
+  it('sabotér nedostane větu, když je vypnutá', () => {
+    for (let seed = 1; seed <= 25; seed++) {
+      let s = prazdnyStav();
+      for (let i = 0; i < 8; i++) s = reducer(s, { typ: 'PRIDAT_HRACE', id: `h${i}`, jmeno: `H${i}` }, seed);
+      s = reducer(s, { typ: 'ZMENIT_NASTAVENI', nastaveni: { septandaProSabotery: false } }, seed);
+      s = reducer(s, { typ: 'ZACIT', seed }, seed);
+      const k = { ...kontextZeStavu(s), proSabotery: false };
+      const vety = rozdatSeptandu(k, rng(seed * 31));
+      for (const id of k.zivi) {
+        if (s.role[id] === 'saboter') expect(vety[id], `seed ${seed}`).toBeUndefined();
+        else expect(vety[id], `seed ${seed}`).toBeTruthy();
+      }
+    }
+  });
+
+  it('zapnutá ji dá i sabotérovi, takže se nedá chytit na prázdno', () => {
+    for (let seed = 1; seed <= 25; seed++) {
+      let s = prazdnyStav();
+      for (let i = 0; i < 8; i++) s = reducer(s, { typ: 'PRIDAT_HRACE', id: `h${i}`, jmeno: `H${i}` }, seed);
+      s = reducer(s, { typ: 'ZACIT', seed }, seed);
+      const k = kontextZeStavu(s);
+      const vety = rozdatSeptandu(k, rng(seed * 31));
+      for (const id of k.zivi) expect(vety[id], `seed ${seed}`).toBeTruthy();
     }
   });
 });

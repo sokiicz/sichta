@@ -12,7 +12,7 @@ export function prazdnyStav(): Stav {
     pocetSaboteru: 0,
     limitSicht: 0,
     smenyNaKolo: 1,
-    nastaveni: { mistrVybiraPartu: false, tajnySaboter: false, umlceniMistoVyrazeni: false },
+    nastaveni: { septandaProSabotery: true, vrazdy: true },
     kolo: 0,
     aktualni: null,
     historie: [],
@@ -42,6 +42,7 @@ export function dostupneOdmeny(s: Stav): Odmena[] {
   const k = s.aktualni;
   const sm = k ? posledniSmena(k) : undefined;
   if (!sm?.padla) return [];
+  if (!s.nastaveni.vrazdy) return ['imunita', 'tma'];
   return s.vrazdaMinulouNoc ? ['imunita', 'tma'] : ['vrazda', 'imunita', 'tma'];
 }
 
@@ -83,6 +84,8 @@ export function noveKolo(cislo: number): Kolo {
     smeny: [],
     septanda: {},
     chtejiDal: [],
+    beznominace: [],
+    zdrzeliSe: [],
     nominace: {},
     kandidati: [],
     hlasy: {},
@@ -138,6 +141,7 @@ function poVysledku(s: Stav, r: Rng): Stav {
       historie: s.historie,
       smeny: k.smeny,
       kolo: k.cislo,
+      proSabotery: s.nastaveni.septandaProSabotery,
     },
     r,
   );
@@ -193,6 +197,20 @@ function zacitDalsiKolo(s: Stav, r: Rng): Stav {
   return { ...sStim, faze: 'predel', aktualni: { ...k, smeny: [rozdatPartu(sStim, r)] } };
 }
 
+/**
+ * Kolik sabotérů stůl podle veřejných informací ještě hledá.
+ *
+ * Odečítají se jen vyhoštění, protože jen u nich se role odhalí. Kdo umře
+ * v noci, roli si vezme s sebou a stůl se nedozví nic. Proto tohle číslo
+ * může být vyšší než skutečnost, a to je správně: ukazuje, co stůl ví,
+ * ne co je pravda.
+ */
+export function zbyvaSaboteruVerejne(s: Stav): number {
+  const odhaleni = [...s.historie, ...(s.aktualni ? [s.aktualni] : [])]
+    .filter((k) => k.vyhosteny && s.role[k.vyhosteny] === 'saboter').length;
+  return Math.max(0, s.pocetSaboteru - odhaleni);
+}
+
 /** Kolik živých musí chtít dál, aby se rozprava utnula. Nadpoloviční většina. */
 export function potrebaProSkok(s: Stav): number {
   return Math.floor(zivi(s).length / 2) + 1;
@@ -234,6 +252,7 @@ export function reducer(s: Stav, a: Akce, seed = 1): Stav {
       return { ...s, hraci: s.hraci.filter((h) => h.id !== a.id) };
 
     case 'ZMENIT_NASTAVENI':
+      if (s.faze !== 'satna') return s;
       if (s.faze !== 'satna') return s;
       return { ...s, nastaveni: { ...s.nastaveni, ...a.nastaveni } };
 
@@ -284,7 +303,40 @@ export function reducer(s: Stav, a: Akce, seed = 1): Stav {
       if (a.id === a.cil) return s;
       if (!hrac(s, a.id)?.zivy) return s;
       if (!hrac(s, a.cil)?.zivy) return s;
-      return { ...s, aktualni: { ...s.aktualni, nominace: { ...s.aktualni.nominace, [a.id]: a.cil } } };
+      return {
+        ...s,
+        aktualni: {
+          ...s.aktualni,
+          nominace: { ...s.aktualni.nominace, [a.id]: a.cil },
+          beznominace: s.aktualni.beznominace.filter((x) => x !== a.id),
+        },
+      };
+    }
+
+    /** Nominovat nikoho je plnohodnotný tah, ne nečinnost. */
+    case 'NENOMINUJU': {
+      if (s.faze !== 'nominace' || !s.aktualni) return s;
+      if (!hrac(s, a.id)?.zivy) return s;
+      const nominace = { ...s.aktualni.nominace };
+      delete nominace[a.id];
+      const beznominace = s.aktualni.beznominace.includes(a.id)
+        ? s.aktualni.beznominace
+        : [...s.aktualni.beznominace, a.id];
+      return { ...s, aktualni: { ...s.aktualni, nominace, beznominace } };
+    }
+
+    /** Zdržet se hlasování. Stín tím svůj jediný hlas neutratí. */
+    case 'ZDRZUJU_SE': {
+      if (s.faze !== 'rada' || !s.aktualni) return s;
+      if (!hrac(s, a.id)) return s;
+      const hlasy = { ...s.aktualni.hlasy };
+      const hlasyStinu = { ...s.aktualni.hlasyStinu };
+      delete hlasy[a.id];
+      delete hlasyStinu[a.id];
+      const zdrzeliSe = s.aktualni.zdrzeliSe.includes(a.id)
+        ? s.aktualni.zdrzeliSe
+        : [...s.aktualni.zdrzeliSe, a.id];
+      return { ...s, aktualni: { ...s.aktualni, hlasy, hlasyStinu, zdrzeliSe } };
     }
 
     case 'HLASOVAT': {
@@ -292,11 +344,12 @@ export function reducer(s: Stav, a: Akce, seed = 1): Stav {
       if (!s.aktualni.kandidati.includes(a.cil)) return s;
       const h = hrac(s, a.id);
       if (!h) return s;
+      const zdrzeliSe = s.aktualni.zdrzeliSe.filter((x) => x !== a.id);
       if (h.zivy) {
-        return { ...s, aktualni: { ...s.aktualni, hlasy: { ...s.aktualni.hlasy, [a.id]: a.cil } } };
+        return { ...s, aktualni: { ...s.aktualni, zdrzeliSe, hlasy: { ...s.aktualni.hlasy, [a.id]: a.cil } } };
       }
       if (h.hlasStinuUtracen) return s;
-      return { ...s, aktualni: { ...s.aktualni, hlasyStinu: { ...s.aktualni.hlasyStinu, [a.id]: a.cil } } };
+      return { ...s, aktualni: { ...s.aktualni, zdrzeliSe, hlasyStinu: { ...s.aktualni.hlasyStinu, [a.id]: a.cil } } };
     }
 
     case 'VYBRAT_ODMENU': {

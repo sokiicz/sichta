@@ -1,5 +1,5 @@
 import type { HracId, Odmena, Role, Smena, Stav } from './types';
-import { dostupneOdmeny, posledniSmena, potrebaProSkok, ziviSaboteri } from './machine';
+import { dostupneOdmeny, posledniSmena, potrebaProSkok, zbyvaSaboteruVerejne, ziviSaboteri } from './machine';
 
 /**
  * Co smí vidět jeden konkrétní hráč. Tohle je jediná cesta, kterou stav opouští
@@ -23,6 +23,7 @@ export interface Pohled {
   kolo: number;
   limitSicht: number;
   pocetSaboteru: number;
+  nastaveni: Stav['nastaveni'];
   pauza: Stav['pauza'];
   vitez: Stav['vitez'];
   duvodKonce: string | null;
@@ -43,6 +44,9 @@ export interface Pohled {
     odmeny: Odmena[];
     /** Moje šeptanda. Každý má jinou a cizí se ven neposílá. */
     septanda: string | null;
+    /** Rozhodl jsem se nikoho nenominovat, respektive zdržet se hlasování. */
+    nenominuju: boolean;
+    zdrzelSeHlasovani: boolean;
   };
 
   /** Veřejné. Přesně tohle vidí celý stůl a nic víc. */
@@ -65,6 +69,14 @@ export interface Pohled {
     chtejiDal: HracId[];
     /** Kolik jich musí chtít, aby se rozprava utnula. */
     potrebaProSkok: number;
+    /**
+     * Kolik sabotérů stůl podle veřejných informací ještě hledá.
+     *
+     * Počítá se **jen z odhalených rolí vyhoštěných**, protože jen ty jsou
+     * veřejné. Kdo umře v noci, roli si vezme s sebou. Kdyby se tohle
+     * odvozovalo ze skutečného stavu, ukazovalo by to stolu víc, než ví.
+     */
+    zbyvaSaboteru: number;
   };
 
   /** Až po konci hry. Do té doby null, jinak by to byl únik všeho naráz. */
@@ -111,9 +123,10 @@ function odevzdaliVFazi(s: Stav): HracId[] {
       return sm ? sm.parta.filter((id) => sm.volby[id] != null) : [];
     }
     case 'nominace':
-      return Object.keys(k.nominace);
+      // kdo se rozhodl nenominovat, taky odevzdal: stůl na něj nemá čekat
+      return [...Object.keys(k.nominace), ...k.beznominace];
     case 'rada':
-      return [...Object.keys(k.hlasy), ...Object.keys(k.hlasyStinu)];
+      return [...Object.keys(k.hlasy), ...Object.keys(k.hlasyStinu), ...k.zdrzeliSe];
     case 'noc':
       return [...Object.keys(k.podezreli), ...Object.keys(k.navrhyObeti)];
     default:
@@ -142,6 +155,7 @@ export function pohledPro(s: Stav, jaId: HracId): Pohled {
     kolo: s.kolo,
     limitSicht: s.limitSicht,
     pocetSaboteru: s.pocetSaboteru,
+    nastaveni: s.nastaveni,
     pauza: s.pauza,
     vitez: s.vitez,
     duvodKonce: s.duvodKonce,
@@ -163,6 +177,8 @@ export function pohledPro(s: Stav, jaId: HracId): Pohled {
       // Vlastní věta. Cizí šeptanda se z pohledu nedostane ven ani omylem,
       // protože se sem kopíruje jediný klíč, ne celý objekt.
       septanda: k?.septanda[jaId] ?? null,
+      nenominuju: k?.beznominace.includes(jaId) ?? false,
+      zdrzelSeHlasovani: k?.zdrzeliSe.includes(jaId) ?? false,
     },
 
     stul: {
@@ -187,6 +203,7 @@ export function pohledPro(s: Stav, jaId: HracId): Pohled {
       odmena: mojeRole === 'saboter' || konec ? k?.odmena ?? null : null,
       chtejiDal: k?.chtejiDal ?? [],
       potrebaProSkok: potrebaProSkok(s),
+      zbyvaSaboteru: zbyvaSaboteruVerejne(s),
     },
 
     konec: konec

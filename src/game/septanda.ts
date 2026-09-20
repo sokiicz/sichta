@@ -58,6 +58,11 @@ export interface KontextSeptandy {
   /** Šichty probíhajícího kola. Jejich výsledek už je veřejný. */
   smeny: Smenaz[];
   kolo: number;
+  /**
+   * Dostane větu i sabotér? Špionská varianta (`false`) mu ji nedá, takže
+   * si musí vymyslet i to, že nějakou má. Viz Nastaveni v types.ts.
+   */
+  proSabotery: boolean;
 }
 
 // ---------------------------------------------------------------- pravda
@@ -319,6 +324,9 @@ export function rozdatSeptandu(k: KontextSeptandy, r: Rng): Record<HracId, strin
   if (pravdy.length === 0) return {};
 
   const ven: Record<HracId, string> = {};
-  for (const id of k.zivi) ven[id] = jeden(pravdy, r);
+  for (const id of k.zivi) {
+    if (!k.proSabotery && jeSaboter(k, id)) continue;
+    ven[id] = jeden(pravdy, r);
+  }
   return ven;
 }

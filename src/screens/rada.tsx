@@ -90,9 +90,16 @@ export function Rozprava({ sekundy, celkem, hlasovani, onDal, onChciDal }: {
 
 // ---------------------------------------------------------------- nominace
 
-export function Nominace({ kdo, jaId, vybrany, sekundy, onVybrat, onPotvrdit }: {
+/**
+ * Nominace. **Nominovat nikoho je plnohodnotný tah**, ne zapomenutí. Bez toho
+ * by musel každý někoho navrhnout, což zaprvé nutí lidi střílet naslepo a
+ * zadruhé rozbíjí šeptandu: věta "v kole 2 nominoval právě jeden sabotér"
+ * nic neříká, když museli nominovat všichni.
+ */
+export function Nominace({ kdo, jaId, vybrany, sekundy, nenominuju, onVybrat, onNikoho, onPotvrdit }: {
   kdo: Kdo[]; jaId: string; vybrany: string | null; sekundy: number | null;
-  onVybrat: (id: string) => void; onPotvrdit: () => void;
+  nenominuju: boolean;
+  onVybrat: (id: string) => void; onNikoho: () => void; onPotvrdit: () => void;
 }) {
   const cil = kdo.find((k) => k.id === vybrany);
   return (
@@ -112,11 +119,23 @@ export function Nominace({ kdo, jaId, vybrany, sekundy, onVybrat, onPotvrdit }: 
         ))}
       </Rostouci>
 
-      <Poznamka>Před radu jdou dva s nejvíc nominacemi. Sebe nominovat nejde.</Poznamka>
+      <Poznamka>
+        Před radu jdou dva s nejvíc nominacemi. Sebe nominovat nejde. Když
+        nenominuje nikdo, tohle kolo nikdo neodejde.
+      </Poznamka>
 
-      <Tlacitko druh={cil ? 'hlavni' : 'tichy'} vyska={78} onClick={cil ? onPotvrdit : undefined}>
-        {cil ? `NOMINOVAT: ${cil.jmeno.toUpperCase()}` : 'VYBER JEDNOHO'}
-      </Tlacitko>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+        <Tlacitko
+          druh={cil ? 'hlavni' : nenominuju ? 'vedlejsi' : 'tichy'}
+          vyska={78}
+          onClick={cil || nenominuju ? onPotvrdit : undefined}
+        >
+          {cil ? `NOMINOVAT: ${cil.jmeno.toUpperCase()}` : nenominuju ? 'POTVRDIT' : 'VYBER JEDNOHO'}
+        </Tlacitko>
+        <Tlacitko druh={nenominuju ? 'hlavni' : 'tichy'} vyska={58} onClick={onNikoho}>
+          {nenominuju ? 'NENOMINUJU NIKOHO' : 'NIKOHO NENOMINOVAT'}
+        </Tlacitko>
+      </div>
     </Obrazovka>
   );
 }
@@ -204,10 +223,15 @@ export function PosledniSlovo({ mluvi, potom, sekundy, podil, onPreskocit }: {
 
 // ---------------------------------------------------------------- rada
 
-export function Rada({ kandidati, vybrany, sekundy, jsemStin, hlasUtracen, onVybrat, onPotvrdit }: {
+/**
+ * Rada. Zdržet se je taky tah: při rovnosti hlasů nikdo neodchází, takže
+ * kolo bez vyhoštění je legitimní výsledek. Stín, který se zdrží, svůj
+ * jediný hlas neutratí.
+ */
+export function Rada({ kandidati, vybrany, sekundy, jsemStin, hlasUtracen, zdrzelSe, onVybrat, onZdrzet, onPotvrdit }: {
   kandidati: Kdo[]; vybrany: string | null; sekundy: number | null;
-  jsemStin: boolean; hlasUtracen: boolean;
-  onVybrat: (id: string) => void; onPotvrdit: () => void;
+  jsemStin: boolean; hlasUtracen: boolean; zdrzelSe: boolean;
+  onVybrat: (id: string) => void; onZdrzet: () => void; onPotvrdit: () => void;
 }) {
   const muzeHlasovat = !jsemStin || !hlasUtracen;
   return (
@@ -236,15 +260,22 @@ export function Rada({ kandidati, vybrany, sekundy, jsemStin, hlasUtracen, onVyb
         ))}
       </Rostouci>
 
-      <Poznamka>Při rovnosti neodchází nikdo.</Poznamka>
+      <Poznamka>Při rovnosti neodchází nikdo. Zdržet se je taky odpověď.</Poznamka>
 
-      <Tlacitko
-        druh={vybrany && muzeHlasovat ? 'hlavni' : 'tichy'}
-        vyska={78}
-        onClick={vybrany && muzeHlasovat ? onPotvrdit : undefined}
-      >
-        {jsemStin ? 'UTRATIT HLAS STÍNU' : 'ODEVZDAT HLAS'}
-      </Tlacitko>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+        <Tlacitko
+          druh={(vybrany || zdrzelSe) && muzeHlasovat ? 'hlavni' : 'tichy'}
+          vyska={78}
+          onClick={(vybrany || zdrzelSe) && muzeHlasovat ? onPotvrdit : undefined}
+        >
+          {zdrzelSe && !vybrany ? 'POTVRDIT' : jsemStin ? 'UTRATIT HLAS STÍNU' : 'ODEVZDAT HLAS'}
+        </Tlacitko>
+        {muzeHlasovat && (
+          <Tlacitko druh={zdrzelSe ? 'hlavni' : 'tichy'} vyska={58} onClick={onZdrzet}>
+            {zdrzelSe ? 'ZDRŽUJU SE' : 'ZDRŽET SE HLASOVÁNÍ'}
+          </Tlacitko>
+        )}
+      </div>
     </Obrazovka>
   );
 }
