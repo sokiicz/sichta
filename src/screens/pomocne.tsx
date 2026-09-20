@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Blok, Hlavicka, Obrazovka, Poznamka, Popisek, Rostouci,
   Stitek, Tlacitko, Veta, Volba, Zpet,
@@ -9,10 +9,11 @@ import { prepnoutZvuk, zvukZapnuty } from '../ui/zvuk';
 
 const PRAVIDLA = [
   { nadpis: 'O CO JDE', text: 'Část party tajně kazí šichty. Pracanti je musí vyhostit dřív, než dojdou kola.', akcent: true },
-  { nadpis: 'KOLO', text: 'Parta jde na šichtu a tajně volí. Pak se mluví, nominuje a hlasuje. Pak je noc.' },
-  { nadpis: 'SABOTÁŽ', text: 'Padlá šichta dá sabotérům jednu odměnu: vraždu, imunitu pro kohokoliv, nebo tmu nad hlasováním. Vraždit dvakrát po sobě nejde.' },
-  { nadpis: 'RADA', text: 'Nominovat nikoho i zdržet se hlasování jsou plnohodnotné tahy. Když se stůl neshodne, to kolo nikdo neodchází.' },
-  { nadpis: 'STÍNY', text: 'Kdo odejde, zůstává u stolu a mluví dál. Nenominuje a má jeden hlas na celý zbytek hry. Zdrží-li se, hlas neutratí.' },
+  { nadpis: 'KOLO', text: 'Parta jde na šichtu a tajně volí. Pak se mluví, nominuje a hlasuje. Po padlé šichtě je noc.' },
+  { nadpis: 'ŠEPTANDA', text: 'Za prošlou šichtu dostane každý vlastní pravdivou větu. Nikdo si cizí neověří, sabotér si tu svou klidně vymyslí.' },
+  { nadpis: 'SABOTÁŽ', text: 'Padlá šichta dá sabotérům jednu odměnu: vraždu, imunitu pro kohokoliv, nebo tmu nad hlasováním. Vraždit dvě kola po sobě nejde. Imunitu i tmu se stůl dozví ráno.' },
+  { nadpis: 'RADA', text: 'Nominovat nikoho i zdržet se hlasování jsou plnohodnotné tahy. Odchází jen ten, kdo má nadpoloviční většinu hlasů a aspoň dva. Jinak nikdo.' },
+  { nadpis: 'STÍNY', text: 'Kdo odejde, zůstává u stolu a mluví dál. Nenominuje a má jeden hlas na celý zbytek hry. Použitím je pryč, zdržením ne.' },
   { nadpis: 'VÝHRA', text: 'Pracanti vyhrají vyhoštěním posledního sabotéra. Sabotéři vyhrají, když jim dojdou šichty a aspoň jeden žije.', patina: true },
 ];
 
@@ -41,16 +42,16 @@ export function Pravidla({ onZpet }: { onZpet: () => void }) {
         ))}
 
         <div style={{ flexShrink: 0, marginTop: 4 }}>
-          <Volba onClick={() => setZvuk(prepnoutZvuk())} vpravo={<Stitek tlumeny>{zvuk ? 'ZAPNUTO' : 'VYPNUTO'}</Stitek>}>
+          <Volba onClick={() => setZvuk(prepnoutZvuk())} popis="Zvuk" vpravo={<Stitek tlumeny>{zvuk ? 'ZAPNUTO' : 'VYPNUTO'}</Stitek>}>
             ZVUK
           </Volba>
           <div style={{ marginTop: 8 }}>
-            <Veta>Houkačku pouští jeden telefon za celý stůl. Vibrace má každý svoje.</Veta>
+            <Veta>Houkačku pouští jeden telefon za celý stůl. Vibrace má každý svoje, iPhone ji neumí.</Veta>
           </div>
         </div>
       </Rostouci>
 
-      <Blok><Veta>Během rozpravy mají telefony ležet lícem dolů. Jinak se z toho stane listování, ne hádka. Na poznámky je tlačítko vpravo dole, zápisník vidíš jen ty.</Veta></Blok>
+      <Blok><Veta>Během rozpravy mají telefony ležet lícem dolů. Jinak se z toho stane listování, ne hádka. Přehled šicht a zápisník máš na tlačítkách dole, během rozpravy jsou zamčené.</Veta></Blok>
       <Tlacitko vyska={76} onClick={onZpet}>ROZUMÍM</Tlacitko>
     </Obrazovka>
   );
@@ -58,12 +59,32 @@ export function Pravidla({ onZpet }: { onZpet: () => void }) {
 
 // ---------------------------------------------------------------- pauza
 
-export function Pauza({ kvuli, duvod, faze, zbyvaloSekund, cekaSe, jsemZakladatel, onCekat, onHratBezNej }: {
-  kvuli: string; duvod: string; faze: string; zbyvaloSekund: number; cekaSe: number;
-  jsemZakladatel: boolean; onCekat: () => void; onHratBezNej: () => void;
+const cas = (ms: number) => {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
+/**
+ * Pauza. Odpočet stojí na vteřině, kde se stálo, a čeká se na hráče, bez
+ * kterého fáze nemůže skončit. Zakladatel může rozhodnout, že se hraje bez
+ * něj: jeho volba pak propadne, jako by nic neodevzdal.
+ */
+export function Pauza({ kvuli, duvod, faze, zbyvaMs, odMs, posunHodin, jsemZakladatel, onHratBezNej }: {
+  kvuli: string; duvod: string; faze: string;
+  /** Kolik ms fáze zbývalo, když se zastavila. null na jednom telefonu. */
+  zbyvaMs: number | null;
+  /** Čas serveru, kdy pauza začala. */
+  odMs: number | null;
+  posunHodin: number;
+  jsemZakladatel: boolean; onHratBezNej: () => void;
 }) {
-  const m = Math.floor(zbyvaloSekund / 60);
-  const s = zbyvaloSekund % 60;
+  const [ted, setTed] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setTed(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const cekaSe = odMs != null ? Math.max(0, ted + posunHodin - odMs) : 0;
+
   return (
     <Obrazovka tmava>
       <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 13, background: 'repeating-linear-gradient(135deg, var(--rez-500) 0 13px, var(--ocel-900) 13px 26px)' }} />
@@ -82,7 +103,7 @@ export function Pauza({ kvuli, duvod, faze, zbyvaloSekund, cekaSe, jsemZakladate
             fontFamily: 'var(--font-nadpis)', fontSize: 78, lineHeight: 0.9, color: 'var(--ram-tlum)',
             textDecoration: 'line-through', textDecorationThickness: 5, textDecorationColor: 'var(--rez-500)',
           }}>
-            {m}:{String(s).padStart(2, '0')}
+            {zbyvaMs != null ? cas(zbyvaMs) : '–:––'}
           </span>
         </div>
 
@@ -101,19 +122,16 @@ export function Pauza({ kvuli, duvod, faze, zbyvaloSekund, cekaSe, jsemZakladate
       <Blok style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: 'var(--t-meta-size)', fontWeight: 600, color: 'var(--text-tlum)' }}>Čeká se už</span>
         <span style={{ fontFamily: 'var(--font-nadpis)', fontSize: 17, letterSpacing: '0.06em', color: 'var(--ocel-400)' }}>
-          {Math.floor(cekaSe / 60)}:{String(cekaSe % 60).padStart(2, '0')}
+          {cas(cekaSe)}
         </span>
       </Blok>
 
       {jsemZakladatel ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <Popisek>ROZHODUJEŠ TY</Popisek>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <div style={{ flexGrow: 1 }}><Tlacitko druh="hlavni" vyska={76} onClick={onCekat}>ČEKAT DÁL</Tlacitko></div>
-            <div style={{ flexGrow: 1 }}><Tlacitko vyska={76} onClick={onHratBezNej}>HRÁT BEZ NĚJ</Tlacitko></div>
-          </div>
+          <Tlacitko vyska={76} onClick={onHratBezNej}>HRÁT BEZ NĚJ</Tlacitko>
           <span style={{ fontSize: 'var(--t-meta-size)', fontWeight: 600, lineHeight: 1.5, color: 'var(--text-tlum)' }}>
-            Hrát bez něj znamená, že jeho volba propadne jako MAKAT. Jde to přepnout kdykoliv, dokud kolo neskončí.
+            Hrát bez něj znamená, že jeho volba propadne, jako by nic neodevzdal. Jakmile se vrátí, hraje zase normálně.
           </span>
         </div>
       ) : (

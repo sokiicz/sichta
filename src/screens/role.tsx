@@ -1,41 +1,34 @@
 import { useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import {
-  Blok, Fajfka, Hlavicka, Obrazovka, Poznamka, Popisek, RadekHrace,
+  Fajfka, Hlavicka, Obrazovka, Poznamka, Popisek, RadekHrace,
   Rostouci, Stitek, Tlacitko, Ukazatel, Zamek,
 } from '../ui/primitives';
-import type { Hrac, HracId, Role } from '../game/types';
+import type { HracId, Role } from '../game/types';
 
 interface Spolu { id: HracId; jmeno: string; predak: boolean }
 
 /**
- * Jediná obrazovka ve hře, která se zakrývá. Odkryje se, jen dokud držíš prst.
- * Jinde to nemá smysl: tam se mačkají tlačítka a obě role vidí totéž.
+ * Odkrytí role držením. Zobrazí se, jen dokud prst (nebo mezerník) drží.
+ * Sdílí ho obrazovka Tvá role a připomínka v přehledu.
  */
-export function TvaRole({
-  role, spoluSaboteri, jsemPredak, pocetHracu, pocetSaboteru, pripraven, onPripraven,
-}: {
-  role: Role | null;
-  spoluSaboteri: Spolu[];
-  jsemPredak: boolean;
-  pocetHracu: number;
-  pocetSaboteru: number;
-  pripraven: boolean;
-  onPripraven: () => void;
+export function OdkrytiRole({ role, spoluSaboteri, jsemPredak, pocetSaboteru, onVidel }: {
+  role: Role | null; spoluSaboteri: Spolu[]; jsemPredak: boolean; pocetSaboteru: number;
+  onVidel?: () => void;
 }) {
   const [drzim, setDrzim] = useState(false);
-  const [videl, setVidel] = useState(false);
 
-  const drz = () => { setDrzim(true); setVidel(true); };
+  const drz = () => { setDrzim(true); onVidel?.(); };
   const pust = () => setDrzim(false);
+  const klavesa = (e: KeyboardEvent, dolu: boolean) => {
+    if (e.key !== ' ' && e.key !== 'Enter') return;
+    e.preventDefault();
+    if (dolu && !e.repeat) drz();
+    if (!dolu) pust();
+  };
 
   return (
-    <Obrazovka zare>
-      <Hlavicka
-        nadpis="TVÁ ROLE"
-        akcent
-        vpravo={<Stitek tlumeny>{pocetHracu} HRÁČŮ · {pocetSaboteru} SABOTÉŘI</Stitek>}
-      />
-
+    <>
       <div
         style={{
           flexGrow: 1, minHeight: 0, border: 'var(--ram-akce) solid var(--ram)',
@@ -73,7 +66,7 @@ export function TvaRole({
                     {jsemPredak ? 'TY' : (spoluSaboteri.find((s) => s.predak)?.jmeno.toUpperCase() ?? '?')}
                   </div>
                   <div style={{ marginTop: 7, fontSize: 'var(--t-prose-size)', lineHeight: 'var(--t-prose-lh)', color: 'var(--text-tlum)' }}>
-                    {jsemPredak ? 'V noci rozhoduješ ty. Ostatní jen navrhují.' : 'V noci rozhoduje on. Ty jen navrhuješ.'}
+                    {jsemPredak ? 'V noci rozhoduješ ty. Ostatní navrhují.' : 'V noci navrhuješ, rozhoduje předák.'}
                   </div>
                 </div>
               </>
@@ -113,6 +106,9 @@ export function TvaRole({
         onPointerUp={pust}
         onPointerLeave={pust}
         onPointerCancel={pust}
+        onKeyDown={(e) => klavesa(e, true)}
+        onKeyUp={(e) => klavesa(e, false)}
+        onBlur={pust}
         onContextMenu={(e) => e.preventDefault()}
         aria-label="Podržením zobrazíš svou roli"
         style={{
@@ -127,13 +123,48 @@ export function TvaRole({
       >
         {drzim ? 'PUSŤ A ZAKRYJE SE' : 'PODRŽ ZDE'}
       </button>
+    </>
+  );
+}
+
+/**
+ * Jediná obrazovka ve hře, která se zakrývá. Odkryje se, jen dokud držíš prst.
+ * Jinde to nemá smysl: tam se mačkají tlačítka a obě role vidí totéž.
+ */
+export function TvaRole({
+  role, spoluSaboteri, jsemPredak, pocetHracu, pocetSaboteru, pripraven, pripravenych, onPripraven,
+}: {
+  role: Role | null;
+  spoluSaboteri: Spolu[];
+  jsemPredak: boolean;
+  pocetHracu: number;
+  pocetSaboteru: number;
+  pripraven: boolean;
+  /** Kolik lidí už potvrdilo. Online se čeká na všechny. */
+  pripravenych: number;
+  onPripraven: () => void;
+}) {
+  const [videl, setVidel] = useState(false);
+
+  return (
+    <Obrazovka zare>
+      <Hlavicka
+        nadpis="TVÁ ROLE"
+        akcent
+        vpravo={<Stitek tlumeny>{pocetHracu} HRÁČŮ · {pocetSaboteru} {pocetSaboteru === 1 ? 'SABOTÉR' : 'SABOTÉŘI'}</Stitek>}
+      />
+
+      <OdkrytiRole
+        role={role} spoluSaboteri={spoluSaboteri} jsemPredak={jsemPredak}
+        pocetSaboteru={pocetSaboteru} onVidel={() => setVidel(true)}
+      />
 
       <Tlacitko
         druh={videl && !pripraven ? 'hlavni' : 'tichy'}
         vyska={74}
         onClick={videl && !pripraven ? onPripraven : undefined}
       >
-        {pripraven ? 'ČEKÁ SE NA OSTATNÍ' : 'JSEM PŘIPRAVEN'}
+        {pripraven ? `ČEKÁ SE NA OSTATNÍ · ${pripravenych} / ${pocetHracu}` : 'JSEM PŘIPRAVEN'}
       </Tlacitko>
     </Obrazovka>
   );
@@ -141,8 +172,9 @@ export function TvaRole({
 
 // ---------------------------------------------------------------- čeká se
 
-export function CekaSe({ hraci, hotovi, podil, onPreskocit, onTvaRole, popis }: {
-  hraci: Hrac[]; hotovi: HracId[]; podil: number; onPreskocit?: () => void; onTvaRole?: () => void; popis: string;
+export function CekaSe({ hraci, hotovi, podil, onPreskocit, popis }: {
+  hraci: { id: HracId; jmeno: string; pripojeny?: boolean }[]; hotovi: HracId[];
+  podil: number; onPreskocit?: () => void; popis: string;
 }) {
   return (
     <Obrazovka>
@@ -159,25 +191,17 @@ export function CekaSe({ hraci, hotovi, podil, onPreskocit, onTvaRole, popis }: 
       <Rostouci style={{ gap: 8 }}>
         {hraci.map((h) => {
           const hotovy = hotovi.includes(h.id);
+          const pryc = h.pripojeny === false && !hotovy;
           return (
             <RadekHrace
               key={h.id}
               jmeno={h.jmeno.toUpperCase()}
-              stav={hotovy ? 'hotovo' : 'cekame'}
-              vpravo={hotovy ? <Fajfka /> : <Stitek tlumeny>ROZMÝŠLÍ SE</Stitek>}
+              stav={hotovy ? 'hotovo' : pryc ? 'pryc' : 'cekame'}
+              vpravo={hotovy ? <Fajfka /> : <Stitek tlumeny>{pryc ? 'BEZ SPOJENÍ' : 'ROZMÝŠLÍ SE'}</Stitek>}
             />
           );
         })}
       </Rostouci>
-
-      {onTvaRole && (
-        <Blok style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
-          <span style={{ fontSize: 'var(--t-meta-size)', fontWeight: 600, color: 'var(--text-tlum)' }}>Zapomněl jsi, co jsi?</span>
-          <button type="button" onClick={onTvaRole} style={{ border: 'none', background: 'none', padding: '8px 0', fontFamily: 'var(--font-nadpis)', fontSize: 16, letterSpacing: '0.12em', color: 'var(--text-akcent)' }}>
-            TVÁ ROLE
-          </button>
-        </Blok>
-      )}
 
       <Ukazatel podil={podil} onPreskocit={onPreskocit} />
     </Obrazovka>

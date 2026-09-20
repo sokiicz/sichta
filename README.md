@@ -23,26 +23,30 @@ potřeba adresa Cloudflare workeru, viz [docs/navod-cloudflare.md](docs/navod-cl
 
 | Kde | Co |
 |---|---|
-| `src/game/` | pravidla jako čistý reducer, bez UI, pokryté testy |
+| `src/game/` | pravidla jako čistý reducer, bez UI, pokryté testy; `opravneni.ts` říká, kdo smí co poslat |
 | `src/ui/` | designový systém, primitiva vynucují pravidla značky |
 | `src/screens/` | obrazovky, čistě prezentační |
 | `src/net/` | WebSocket klient a přepínač lokální/online hry |
 | `worker/` | Cloudflare Worker a Durable Object, jedna instance na místnost |
 | `brand/` | tokeny a pravidla značky |
-| `docs/` | návrh hry, soupis obrazovek, audit, průzkum trhu, plán stavby |
+| `docs/` | návrh hry, soupis obrazovek, audity, úkoly, průzkum trhu, plán stavby |
 
 Herní pravidla žijí **jen** v `src/game/`. Durable Object spouští ten samý
 reducer jako prohlížeč, takže neexistují dvě pravdy, co by se mohly rozejít.
 Klient nikdy nedostane celý stav, ven vede jediná cesta, `pohledPro()`,
-a ta má vlastní testy na únik rolí.
+a ta má vlastní testy na únik rolí i na to, co se smí ukázat kdy. Náhodu
+místnosti a hodiny drží worker, reducer je nemá.
+
+Hra na jednom telefonu je vývojová pomůcka, hraje se online.
 
 ## Nástroje
 
 ```bash
-npm test                              # herní logika
+npm test                              # herní logika, 103 testů
 npm run build                         # produkční build
 npm run cf:dev                        # backend lokálně na :8787
 npm run cf:deploy                     # nasazení workeru
+node scripts/test-online.mjs http://localhost:8787   # integrační test proti workeru (Node 22)
 node docs/balance-sim.mjs --games 6000  # simulace vyvážení
 ```
 
@@ -51,8 +55,9 @@ Wrangler potřebuje Node 22+. V `D:/ai/tools/node22` leží přenosný Node,
 
 ## Stav
 
-Hratelné od začátku do konce lokálně i po síti. Zbývá playtest s partou
-a nasazení na GitHub Pages. Podrobně v [docs/plan-stavby.md](docs/plan-stavby.md).
+Hratelné od začátku do konce po síti, po auditu a opravách z 2026-09-20.
+Zbývá playtest s partou a nasazení opravené verze. Podrobně
+v [docs/plan-stavby.md](docs/plan-stavby.md) a [docs/ukoly.md](docs/ukoly.md).
 
 ## Secrets
 

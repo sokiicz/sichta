@@ -1,4 +1,7 @@
-/** Šichta — datové typy hry. Zdroj pravdy pro pravidla je docs/design.md. */
+/**
+ * Šichta — datové typy hry. Pravidla popisuje docs/design.md, čísla sestav
+ * drží src/game/rules.ts a ta jsou zdroj pravdy.
+ */
 
 export type Role = 'pracant' | 'saboter';
 export type Smena = 'dopoledni' | 'odpoledni';
@@ -34,6 +37,11 @@ export interface Hrac {
   hlasStinuUtracen: boolean;
   pripojeny: boolean;
   zakladatel: boolean;
+  /**
+   * Zakladatel rozhodl, že se hraje bez něj. Odpojený hráč pak nedrží
+   * pauzu a fáze na něj nečeká. Návrat to zase zruší.
+   */
+  bezNej: boolean;
 }
 
 /** Jedna směna v rámci kola. Krátká hra má jednu, plná dvě. */
@@ -46,13 +54,44 @@ export interface Smenaz {
   padla: boolean | null;
 }
 
+/**
+ * Tvrzení šeptandy jako data. Čeština se z něj teprve skládá, takže
+ * pravdivost jde ověřit nezávisle na překladu.
+ */
+export type Tvrzeni =
+  /** Ne všichni jmenovaní jsou sabotéři. Aspoň jeden z nich maká poctivě. */
+  | { typ: 'nejsou_vsichni'; kdo: HracId[] }
+  /** Mezi jmenovanými je aspoň jeden sabotér. */
+  | { typ: 'aspon_jeden'; kdo: HracId[] }
+  /** Jmenovaný sabotér není. Nejsilnější, co šeptanda umí. */
+  | { typ: 'cisty'; kdo: HracId }
+  /** Kolik sabotérů v tom kole nominovalo. */
+  | { typ: 'nominovalo'; kolo: number; pocet: number }
+  /** Aspoň jeden sabotér dal v tom kole hlas tomuhle jménu. */
+  | { typ: 'hlas'; kolo: number; cil: HracId }
+  /** Byl předák v partě na tu šichtu? */
+  | { typ: 'predak'; kolo: number; byl: boolean }
+  /** Prošlá šichta, ve které přesto sabotér byl. */
+  | { typ: 'tichy_saboter'; kolo: number };
+
 export interface Kolo {
   cislo: number;
   smeny: Smenaz[];
+  /**
+   * Pravdy rozdané za prošlou šichtu, jako data. Drží se kvůli protokolu
+   * partie a kvůli tomu, aby se vzácné rodiny (předák) neopakovaly.
+   */
+  pravdy: Tvrzeni[];
   /** Věta pro každého živého hráče zvlášť. Cizí se ven nikdy neposílá. */
   septanda: Record<HracId, string>;
   nominace: Record<HracId, HracId>;
   kandidati: HracId[];
+  /** Kdo z kandidátů má právě poslední slovo. Index do `kandidati`. */
+  mluvi: number;
+  /** Kdo měl v téhle radě imunitu z noci. Veřejné. */
+  imunni: HracId | null;
+  /** Byla nad touhle radou tma. Hlasy se pak neodhalí až do konce hry. */
+  tma: boolean;
   hlasy: Record<HracId, HracId>;
   /** Hlasy stínů jsou veřejné stejně jako ostatní, jen se smí použít jednou. */
   hlasyStinu: Record<HracId, HracId>;
@@ -105,6 +144,20 @@ export interface Nastaveni {
    */
   vrazdy: boolean;
 }
+
+/**
+ * Odpočet stojí, dokud se někdo nevrátí nebo zakladatel nerozhodne.
+ * `od` a `zbyva` doplňuje server, reducer hodiny nemá.
+ */
+export interface Pauza {
+  duvod: string;
+  kvuli: HracId;
+  /** Čas serveru (ms), kdy pauza začala. */
+  od: number | null;
+  /** Kolik ms fáze zbývalo, až se bude pokračovat. */
+  zbyva: number | null;
+}
+
 export interface Stav {
   faze: Faze;
   hraci: Hrac[];
@@ -123,23 +176,37 @@ export interface Stav {
   /** Kdo už se podíval na svou roli. Hra nezačne, dokud to nemají všichni. */
   pripraveni: HracId[];
 
-  /** Vražda dvakrát po sobě nejde. */
-  vrazdaMinulouNoc: boolean;
+  /**
+   * Vražda nejde dvě kola po sobě. Počítá se v kolech, ne v nocích:
+   * prošlá šichta mezi dvěma vraždami stačí. Tak to měřila simulace.
+   */
+  vrazdaMinuleKolo: boolean;
+  /** Odměny z noci, které čekají na nejbližší radu. Spotřebují se tam. */
   imunita: HracId | null;
-  tmaNadHlasovanim: boolean;
+  tmaPristiRady: boolean;
 
   vitez: Tym | null;
   duvodKonce: string | null;
 
-  /** Odpočet stojí, dokud se někdo nevrátí nebo zakladatel nerozhodne. */
-  pauza: { duvod: string; kvuli: HracId } | null;
+  pauza: Pauza | null;
+
+  /**
+   * Čas serveru (ms), kdy končí běžící fáze. Nastavuje worker, reducer
+   * hodiny nemá. Na jednom telefonu null, tam odpočítává zařízení samo.
+   */
+  konecFaze: number | null;
+  /**
+   * Náhodný identifikátor partie. Klíčuje soukromý zápisník v telefonu,
+   * aby si dvě partie nepletly poznámky. Nikdy z něj nejde nic odvodit.
+   */
+  partie: string | null;
 }
 
 export type Akce =
   | { typ: 'PRIDAT_HRACE'; id: HracId; jmeno: string; zakladatel?: boolean }
   | { typ: 'ODEBRAT_HRACE'; id: HracId }
   | { typ: 'ZMENIT_NASTAVENI'; nastaveni: Partial<Nastaveni> }
-  | { typ: 'ZACIT'; seed?: number }
+  | { typ: 'ZACIT'; seed?: number; partie?: string }
   | { typ: 'PRIPRAVEN'; id: HracId }
   | { typ: 'VOLBA_SICHTY'; id: HracId; volba: 'makat' | 'kazit' }
   | { typ: 'NOMINOVAT'; id: HracId; cil: HracId }
@@ -154,4 +221,6 @@ export type Akce =
   | { typ: 'DALSI_FAZE' }
   | { typ: 'ODPOJIL_SE'; id: HracId }
   | { typ: 'PRIPOJIL_SE'; id: HracId }
-  | { typ: 'HRAT_BEZ_NEJ'; id: HracId };
+  | { typ: 'HRAT_BEZ_NEJ'; id: HracId }
+  /** Stejná parta znovu: zpátky do šatny, role se rozdají nanovo. */
+  | { typ: 'ZNOVU' };

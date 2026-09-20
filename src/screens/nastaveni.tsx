@@ -66,6 +66,7 @@ export function NastaveniHry({ nastaveni, onPrepnout, onZpet }: {
             <div key={v.klic} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <Volba
                 onClick={() => onPrepnout(v.klic, !zap)}
+                popis={`${v.nadpis}: ${zap ? v.zapnuto : v.vypnuto}`}
                 vpravo={<Stitek tlumeny>{zap ? v.zapnuto : v.vypnuto}</Stitek>}
               >
                 {v.nadpis}

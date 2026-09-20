@@ -2,7 +2,7 @@ import {
   Blok, Hlavicka, Obrazovka, Poznamka, Popisek, Rostouci,
   Stitek, Tlacitko, Veta, Znacka,
 } from '../ui/primitives';
-import type { Role, Tym } from '../game/types';
+import type { Role, Smena, Tym } from '../game/types';
 
 // ---------------------------------------------------------------- konec
 
@@ -46,6 +46,7 @@ export function Konec({ vitez, duvod, sicht, padlo, stinu, onOdhalit }: {
 // ---------------------------------------------------------------- odhalení
 
 export interface Odhaleny {
+  id: string;
   jmeno: string;
   role: Role;
   predak: boolean;
@@ -53,9 +54,11 @@ export interface Odhaleny {
   odchod: string | null;
 }
 
-export function Odhaleni({ hraci, cuch, onPrubeh, onZnovu }: {
+export function Odhaleni({ hraci, cuch, jsemZakladatel, onPrubeh, onZnovu }: {
   hraci: Odhaleny[];
   cuch: { jmeno: string; popis: string } | null;
+  /** Online spouští další partii zakladatel, ostatní čekají. */
+  jsemZakladatel: boolean;
   onPrubeh: () => void; onZnovu: () => void;
 }) {
   return (
@@ -67,7 +70,7 @@ export function Odhaleni({ hraci, cuch, onPrubeh, onZnovu }: {
           const zly = h.role === 'saboter';
           return (
             <div
-              key={h.jmeno}
+              key={h.id}
               style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
                 flexShrink: 0, padding: '12px 13px',
@@ -104,7 +107,11 @@ export function Odhaleni({ hraci, cuch, onPrubeh, onZnovu }: {
 
       <div style={{ display: 'flex', gap: 11 }}>
         <div style={{ flexGrow: 1 }}><Tlacitko vyska={72} onClick={onPrubeh}>PRŮBĚH</Tlacitko></div>
-        <div style={{ flexGrow: 1 }}><Tlacitko druh="hlavni" vyska={72} onClick={onZnovu}>JEŠTĚ JEDNOU</Tlacitko></div>
+        <div style={{ flexGrow: 1 }}>
+          {jsemZakladatel
+            ? <Tlacitko druh="hlavni" vyska={72} onClick={onZnovu}>JEŠTĚ JEDNOU</Tlacitko>
+            : <Tlacitko druh="tichy" vyska={72}>ČEKÁ SE NA ZAKLADATELE</Tlacitko>}
+        </div>
       </div>
     </Obrazovka>
   );
@@ -114,53 +121,89 @@ export function Odhaleni({ hraci, cuch, onPrubeh, onZnovu }: {
 
 export interface KoloPrehled {
   cislo: number;
-  padla: boolean;
-  sabotazi: number;
-  parta: { jmeno: string; saboter: boolean }[];
-  rada: string | null;
-  noc: string | null;
+  smeny: {
+    smena: Smena;
+    padla: boolean;
+    sabotazi: number;
+    /** `saboter` se plní jen po konci hry. Během hry role nikdo nevidí. */
+    parta: { id: string; jmeno: string; saboter?: boolean }[];
+  }[];
+  vyhosteny: { jmeno: string; role: Role | null } | null;
+  obet: string | null;
+  imunni: string | null;
+  tma: boolean;
+  /** null: hlasy zůstaly potmě. Prázdné pole: nikdo nehlasoval nebo rada nebyla. */
+  hlasy: { kdo: string; komu: string; stin: boolean }[] | null;
 }
 
-export function Prehled({ kola, poznamka, onZpet }: {
-  kola: KoloPrehled[]; poznamka: string | null; onZpet: () => void;
-}) {
-  return (
-    <Obrazovka>
-      <Hlavicka nadpis="PRŮBĚH" vpravo={<Stitek tlumeny>{kola.length} ŠICHT</Stitek>} />
+const NAZEV_SMENY: Record<Smena, string> = { dopoledni: 'DOPOLEDNÍ', odpoledni: 'ODPOLEDNÍ' };
 
-      <Rostouci style={{ gap: 11 }}>
-        {kola.map((k) => (
-          <Blok key={k.cislo}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ fontFamily: 'var(--font-nadpis)', fontSize: 20, letterSpacing: '0.04em' }}>ŠICHTA {k.cislo}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', color: k.padla ? '#E8897A' : '#9BC095' }}>
-                {k.padla ? `PADLA · KAZILI ${k.sabotazi}` : 'PROŠLA'}
+/** Seznam kol. Sdílí ho průběh po konci hry a přehled během ní. */
+export function SeznamKol({ kola, prazdne }: { kola: KoloPrehled[]; prazdne: string }) {
+  if (kola.length === 0) return <Poznamka>{prazdne}</Poznamka>;
+  return (
+    <>
+      {kola.map((k) => (
+        <Blok key={k.cislo}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <span style={{ fontFamily: 'var(--font-nadpis)', fontSize: 20, letterSpacing: '0.04em' }}>ŠICHTA {k.cislo}</span>
+            {k.smeny.length === 1 && k.smeny[0] && (
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', color: k.smeny[0].padla ? '#E8897A' : '#9BC095' }}>
+                {k.smeny[0].padla ? `PADLA · KAZILI ${k.smeny[0].sabotazi}` : 'PROŠLA'}
               </span>
+            )}
+          </div>
+          {k.smeny.map((sm) => (
+            <div key={sm.smena} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {k.smeny.length > 1 && (
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', color: sm.padla ? '#E8897A' : '#9BC095' }}>
+                  {NAZEV_SMENY[sm.smena]} · {sm.padla ? `PADLA · KAZILI ${sm.sabotazi}` : 'PROŠLA'}
+                </span>
+              )}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {sm.parta.map((p) => (
+                  <span
+                    key={p.id}
+                    style={{
+                      fontSize: 'var(--t-meta-size)', fontWeight: 600, padding: '4px 8px',
+                      border: `2px solid ${p.saboter ? 'var(--spal-500)' : 'var(--ram-tlum)'}`,
+                      color: p.saboter ? '#E8897A' : 'var(--text-tlum)',
+                    }}
+                  >
+                    {p.jmeno}
+                  </span>
+                ))}
+              </div>
             </div>
+          ))}
+          <div style={{ fontSize: 'var(--t-meta-size)', color: 'var(--text)', lineHeight: 1.6 }}>
+            Rada: <strong>{k.vyhosteny ? `${k.vyhosteny.jmeno}${k.vyhosteny.role ? ` (${k.vyhosteny.role === 'saboter' ? 'sabotér' : 'pracant'})` : ''}` : 'nikdo'}</strong>
+            {k.imunni && <> · Imunita: <strong>{k.imunni}</strong></>}
+            {k.tma && <> · <strong>potmě</strong></>}
+            {k.obet && <> · Noc: <strong>{k.obet}</strong></>}
+          </div>
+          {k.hlasy && k.hlasy.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {k.parta.map((p) => (
-                <span
-                  key={p.jmeno}
-                  style={{
-                    fontSize: 'var(--t-meta-size)', fontWeight: 600, padding: '4px 8px',
-                    border: `2px solid ${p.saboter ? 'var(--spal-500)' : 'var(--ram-tlum)'}`,
-                    color: p.saboter ? '#E8897A' : 'var(--text-tlum)',
-                  }}
-                >
-                  {p.jmeno}
+              {k.hlasy.map((h, i) => (
+                <span key={`${h.kdo}-${i}`} style={{ fontSize: 11, fontWeight: 600, padding: '3px 7px', border: `2px solid ${h.stin ? 'var(--rez-700)' : 'var(--ram-tlum)'}`, color: 'var(--text-tlum)' }}>
+                  {h.kdo} → {h.komu}
                 </span>
               ))}
             </div>
-            <div style={{ fontSize: 'var(--t-meta-size)', color: 'var(--text)' }}>
-              Rada: <strong>{k.rada ?? 'nikdo'}</strong>
-              {k.noc && <> · Noc: <strong>{k.noc}</strong></>}
-            </div>
-          </Blok>
-        ))}
+          )}
+        </Blok>
+      ))}
+    </>
+  );
+}
 
-        {poznamka && <Poznamka>{poznamka}</Poznamka>}
+export function Prehled({ kola, onZpet }: { kola: KoloPrehled[]; onZpet: () => void }) {
+  return (
+    <Obrazovka>
+      <Hlavicka nadpis="PRŮBĚH" vpravo={<Stitek tlumeny>{kola.length} ŠICHT</Stitek>} />
+      <Rostouci style={{ gap: 11 }}>
+        <SeznamKol kola={kola} prazdne="Ještě neproběhla žádná šichta." />
       </Rostouci>
-
       <Tlacitko vyska={76} onClick={onZpet}>ZPĚT</Tlacitko>
     </Obrazovka>
   );

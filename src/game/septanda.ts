@@ -1,5 +1,7 @@
-import type { HracId, Kolo, Role, Smenaz } from './types';
+import type { HracId, Kolo, Role, Smenaz, Tvrzeni } from './types';
 import { jeden, vyber, type Rng } from './random';
+
+export type { Tvrzeni } from './types';
 
 /**
  * Šeptanda. Za prošlou šichtu dostane **každý živý hráč vlastní větu.**
@@ -10,7 +12,7 @@ import { jeden, vyber, type Rng } from './random';
  * svou musí obhájit, a stůl se hádá o tvrzeních, ne o faktech. Tohle je
  * druhá polovina lhaní ve hře, hned vedle tajné volby na šichtě.
  *
- * Tři pravidla, která se nesmí porušit:
+ * Čtyři pravidla, která se nesmí porušit:
  *
  * 1. **Každá věta je pravdivá.** Proto se tvrzení staví jako data (`Tvrzeni`)
  *    a teprve pak převádí na češtinu. Pravdivost ověřuje `platiTvrzeni`,
@@ -25,34 +27,24 @@ import { jeden, vyber, type Rng } from './random';
  *    tvar, dalo by se lhaní odhalit podle stylu. Sabotérovi jsou k ničemu,
  *    protože role už zná, takže musí lhát nebo mlčet. To je záměr.
  *
+ * 4. **Žádná věta nesmí být důkaz.** Hlasy v radě jsou veřejné, takže věta
+ *    "hlas sabotéra padl na X" jmenuje sabotéra rovnou, když X dostal jediný
+ *    hlas. Proto se vybírají jen cíle se dvěma a víc hlasy. Věta o předákovi
+ *    se s veřejnými partami protíná napříč koly, proto padne nejvýš jednou
+ *    za partii.
+ *
  * Co se sem vědomě nedostalo: nic o tomhle kole. Šeptanda běží **před**
  * nominacemi a radou, takže tvrzení o hlasování se můžou týkat jen kol,
- * která už doběhla. Dřív to tu bylo špatně a po první šichtě to hlásilo
- * "aspoň jeden sabotér nenominoval", což byla pravda jen proto, že ještě
- * nikdo nenominoval.
+ * která už doběhla.
  */
-
-export type Tvrzeni =
-  /** Ne všichni jmenovaní jsou sabotéři. Aspoň jeden z nich maká poctivě. */
-  | { typ: 'nejsou_vsichni'; kdo: HracId[] }
-  /** Mezi jmenovanými je aspoň jeden sabotér. */
-  | { typ: 'aspon_jeden'; kdo: HracId[] }
-  /** Jmenovaný sabotér není. Nejsilnější, co šeptanda umí. */
-  | { typ: 'cisty'; kdo: HracId }
-  /** Kolik sabotérů v tom kole nominovalo. */
-  | { typ: 'nominovalo'; kolo: number; pocet: number }
-  /** Aspoň jeden sabotér dal v tom kole hlas tomuhle jménu. */
-  | { typ: 'hlas'; kolo: number; cil: HracId }
-  /** Byl předák v partě na tu šichtu? */
-  | { typ: 'predak'; kolo: number; byl: boolean }
-  /** Prošlá šichta, ve které přesto sabotér byl. */
-  | { typ: 'tichy_saboter'; kolo: number };
 
 export interface KontextSeptandy {
   role: Record<HracId, Role>;
   jmeno: (id: HracId) => string;
   predak: HracId | null;
   zivi: HracId[];
+  /** Kolik lidí sedí u stolu. Pětka je zvláštní případ, viz rodina `cisty`. */
+  pocetHracu: number;
   /** Jen dokončená kola. O probíhajícím kole se šeptanda nevyjadřuje. */
   historie: Kolo[];
   /** Šichty probíhajícího kola. Jejich výsledek už je veřejný. */
@@ -68,6 +60,12 @@ export interface KontextSeptandy {
 // ---------------------------------------------------------------- pravda
 
 const jeSaboter = (k: KontextSeptandy, id: HracId) => k.role[id] === 'saboter';
+
+/** Všechny veřejné hlasy kola: živých i stínů. */
+const hlasyKola = (kolo: Kolo): [HracId, HracId][] => [
+  ...Object.entries(kolo.hlasy),
+  ...Object.entries(kolo.hlasyStinu),
+];
 
 /**
  * Jediné místo, které rozhoduje, jestli je tvrzení pravdivé. Čte stav znovu
@@ -91,7 +89,7 @@ export function platiTvrzeni(t: Tvrzeni, k: KontextSeptandy): boolean {
     case 'hlas': {
       const kolo = k.historie.find((h) => h.cislo === t.kolo);
       if (!kolo) return false;
-      return Object.entries(kolo.hlasy).some(([kdo, cil]) => jeSaboter(k, kdo) && cil === t.cil);
+      return hlasyKola(kolo).some(([kdo, cil]) => jeSaboter(k, kdo) && cil === t.cil);
     }
     case 'predak': {
       const kolo = k.historie.find((h) => h.cislo === t.kolo);
@@ -106,6 +104,21 @@ export function platiTvrzeni(t: Tvrzeni, k: KontextSeptandy): boolean {
         (sm) => sm.padla === false && sm.parta.some((id) => jeSaboter(k, id)),
       );
     }
+  }
+}
+
+/** Jmenuje tvrzení tohohle hráče? Vlastní jméno ve vlastní větě je k ničemu. */
+export function jmenuje(t: Tvrzeni, id: HracId): boolean {
+  switch (t.typ) {
+    case 'nejsou_vsichni':
+    case 'aspon_jeden':
+      return t.kdo.includes(id);
+    case 'cisty':
+      return t.kdo === id;
+    case 'hlas':
+      return t.cil === id;
+    default:
+      return false;
   }
 }
 
@@ -168,6 +181,9 @@ interface Rodina {
 
 const ostatni = (k: KontextSeptandy, prijemce: HracId) => k.zivi.filter((id) => id !== prijemce);
 
+/** Kolik hlasů cíl v tom kole dostal. Jediný hlas by z věty udělal důkaz. */
+const MIN_HLASU_PRO_VETU = 2;
+
 const RODINY: Rodina[] = [
   {
     klic: 'dvojice',
@@ -209,6 +225,8 @@ const RODINY: Rodina[] = [
     klic: 'cisty',
     vaha: 1,
     sestav: (k, prijemce, r) => {
+      // V pěti kazí jeden a "určitě není sabotér" vyřeší partii za dvě kola.
+      if (k.pocetHracu <= 5) return null;
       const pracanti = ostatni(k, prijemce).filter((id) => !jeSaboter(k, id));
       if (pracanti.length === 0) return null;
       return { typ: 'cisty', kdo: jeden(pracanti, r) };
@@ -228,15 +246,18 @@ const RODINY: Rodina[] = [
     klic: 'hlas',
     vaha: 3,
     sestav: (k, _prijemce, r) => {
-      const mozna = k.historie.filter((h) =>
-        Object.keys(h.hlasy).some((id) => jeSaboter(k, id)),
-      );
-      if (mozna.length === 0) return null;
-      const kolo = jeden(mozna, r);
-      const cile = Object.entries(kolo.hlasy)
-        .filter(([kdo]) => jeSaboter(k, kdo))
-        .map(([, cil]) => cil);
-      return { typ: 'hlas', kolo: kolo.cislo, cil: jeden(cile, r) };
+      // jen cíle, na které padly aspoň dva hlasy: jediný hlas by byl důkaz
+      const kandidati = k.historie.flatMap((h) => {
+        const pocty = new Map<HracId, number>();
+        for (const [, cil] of hlasyKola(h)) pocty.set(cil, (pocty.get(cil) ?? 0) + 1);
+        const cile = hlasyKola(h)
+          .filter(([kdo, cil]) => jeSaboter(k, kdo) && (pocty.get(cil) ?? 0) >= MIN_HLASU_PRO_VETU)
+          .map(([, cil]) => cil);
+        return [...new Set(cile)].map((cil) => ({ kolo: h.cislo, cil }));
+      });
+      if (kandidati.length === 0) return null;
+      const { kolo, cil } = jeden(kandidati, r);
+      return { typ: 'hlas', kolo, cil };
     },
   },
   {
@@ -244,6 +265,8 @@ const RODINY: Rodina[] = [
     vaha: 2,
     sestav: (k, _prijemce, r) => {
       if (!k.predak || k.historie.length === 0) return null;
+      // věty o předákovi se s veřejnými partami protínají, jedna za partii stačí
+      if (k.historie.some((h) => h.pravdy.some((t) => t.typ === 'predak'))) return null;
       const kolo = jeden(k.historie, r);
       return { typ: 'predak', kolo: kolo.cislo, byl: kolo.smeny.some((sm) => sm.parta.includes(k.predak!)) };
     },
@@ -307,9 +330,15 @@ export function septandaPro(k: KontextSeptandy, prijemce: HracId, r: Rng): Tvrze
  */
 export const POCET_PRAVD = 3;
 
-/** Věta pro každého živého hráče. Klíč je id hráče, hodnota hotová čeština. */
-export function rozdatSeptandu(k: KontextSeptandy, r: Rng): Record<HracId, string> {
-  const pravdy: string[] = [];
+export interface Septanda {
+  /** Věta pro každého živého hráče. Klíč je id hráče, hodnota hotová čeština. */
+  vety: Record<HracId, string>;
+  /** Tytéž pravdy jako data, kvůli protokolu a paměti rodin. */
+  pravdy: Tvrzeni[];
+}
+
+export function rozdatSeptandu(k: KontextSeptandy, r: Rng): Septanda {
+  const pravdy: Tvrzeni[] = [];
   const videne = new Set<string>();
   // Příjemce je tu jen zdroj náhody pro výběr rodiny, věta se pak rozdává všem.
   for (const id of vyber(k.zivi, k.zivi.length, r)) {
@@ -319,14 +348,17 @@ export function rozdatSeptandu(k: KontextSeptandy, r: Rng): Record<HracId, strin
     const veta = vetaZTvrzeni(t, k.jmeno);
     if (videne.has(veta)) continue;
     videne.add(veta);
-    pravdy.push(veta);
+    pravdy.push(t);
   }
-  if (pravdy.length === 0) return {};
+  if (pravdy.length === 0) return { vety: {}, pravdy: [] };
 
-  const ven: Record<HracId, string> = {};
+  const vety: Record<HracId, string> = {};
   for (const id of k.zivi) {
     if (!k.proSabotery && jeSaboter(k, id)) continue;
-    ven[id] = jeden(pravdy, r);
+    // Vlastní jméno ve vlastní větě je k ničemu, tak se mu vyhneme, když to jde.
+    const cizi = pravdy.filter((t) => !jmenuje(t, id));
+    const t = jeden(cizi.length > 0 ? cizi : pravdy, r);
+    vety[id] = vetaZTvrzeni(t, k.jmeno);
   }
-  return ven;
+  return { vety, pravdy };
 }

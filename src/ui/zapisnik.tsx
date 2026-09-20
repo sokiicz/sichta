@@ -21,11 +21,12 @@ interface Kontext {
 
 const ZapisnikCtx = createContext<Kontext>({ klic: null, jmeno: null });
 
-export function PoskytniZapisnik({ kod, hracId, jmeno, aktivni, children }: {
-  kod: string | null; hracId: string | null; jmeno: string | null;
+export function PoskytniZapisnik({ kod, partie, hracId, jmeno, aktivni, children }: {
+  kod: string | null; partie: string | null; hracId: string | null; jmeno: string | null;
   aktivni: boolean; children: ReactNode;
 }) {
-  const klic = aktivni && hracId ? `sichta:zapisnik:${kod ?? 'hotseat'}:${hracId}` : null;
+  // Partie má vlastní identifikátor, takže dvě hry na jednom telefonu si poznámky nepletou.
+  const klic = aktivni && hracId ? `sichta:zapisnik:${kod ?? 'hotseat'}:${partie ?? 'bez'}:${hracId}` : null;
   return <ZapisnikCtx.Provider value={{ klic, jmeno }}>{children}</ZapisnikCtx.Provider>;
 }
 
@@ -63,7 +64,7 @@ export function Zapisnik() {
         aria-label="Otevřít zápisník"
         style={{
           position: 'fixed', right: 14, bottom: 'max(14px, env(safe-area-inset-bottom))',
-          width: 52, height: 52, borderRadius: '50%', zIndex: 40,
+          width: 48, height: 48, borderRadius: '50%', zIndex: 40,
           border: '3px solid var(--ram)', background: 'var(--ocel-900)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 14px rgba(0,0,0,0.45)',
@@ -89,7 +90,7 @@ export function Zapisnik() {
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(16,18,19,0.94)',
+        position: 'fixed', inset: 0, zIndex: 50, background: 'var(--ocel-900)',
         display: 'flex', flexDirection: 'column', gap: 12,
         padding: 'max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom))',
       }}

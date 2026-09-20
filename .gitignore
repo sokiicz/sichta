@@ -24,3 +24,6 @@ tsconfig.tsbuildinfo
 
 # pracovní skripty k simulacím, nepatří do repa
 scratch/
+
+# lokální stav wranglera
+.wrangler/

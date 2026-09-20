@@ -12,6 +12,9 @@ import type { Pohled } from '../game/pohled';
 
 export type StavSite = 'pripojuji' | 'pripojen' | 'odpojen';
 
+/** Proč nás server nepustil. Po takové zprávě se už nezkouší znovu. */
+export type ChybaPripojeni = 'hra-bezi' | 'plno' | 'jmeno';
+
 const KLIC_TOKEN = 'sichta:token';
 
 export function mujToken(): string {
@@ -44,8 +47,10 @@ export async function zalozitMistnost(): Promise<string> {
 interface Nastaveni {
   kod: string;
   jmeno: string;
-  onPohled: (p: Pohled) => void;
+  /** `posun` je rozdíl hodin serveru a telefonu v ms. Přičítá se k Date.now(). */
+  onPohled: (p: Pohled, posun: number) => void;
   onStav: (s: StavSite) => void;
+  onChyba: (kod: ChybaPripojeni) => void;
 }
 
 export class Spojeni {
@@ -84,14 +89,21 @@ export class Spojeni {
 
     ws.onmessage = (e) => {
       try {
-        const d = JSON.parse(String(e.data)) as { t: string; p?: Pohled };
-        if (d.t === 'pohled' && d.p) this.n.onPohled(d.p);
+        const d = JSON.parse(String(e.data)) as { t: string; p?: Pohled; ted?: number; kod?: ChybaPripojeni };
+        if (d.t === 'pohled' && d.p) {
+          const posun = typeof d.ted === 'number' ? d.ted - Date.now() : 0;
+          this.n.onPohled(d.p, posun);
+        } else if (d.t === 'chyba' && d.kod) {
+          this.zavreno = true;
+          this.n.onChyba(d.kod);
+        }
       } catch {
         // pokažená zpráva se zahodí, další přijde za chvíli
       }
     };
 
     ws.onclose = () => {
+      if (this.zavreno) return;
       this.n.onStav('odpojen');
       this.naplanovatZnovu();
     };

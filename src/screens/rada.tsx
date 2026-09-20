@@ -7,16 +7,16 @@ export interface Kdo { id: string; jmeno: string; zivy: boolean }
 
 // ---------------------------------------------------------------- rozprava
 
-/** Schválně nudná obrazovka. Cokoliv zajímavého by lákalo koukat do telefonu. */
 /**
- * Rozprava. Odpočet je strop, ne norma: často se vypovídá dřív a čekat na
- * nulu je otrava. Většina živých ho proto může utnout.
+ * Rozprava. Schválně nudná obrazovka: cokoliv zajímavého by lákalo koukat
+ * do telefonu. Odpočet je strop, ne norma: často se vypovídá dřív a čekat
+ * na nulu je otrava. Většina živých ho proto může utnout.
  *
  * Kdo už chce dál, je vidět. Je to nátlak sám o sobě a zároveň informace
  * do hry: kdo pořád spěchá pryč od rozpravy, si toho možná moc nepřeje.
  */
 export function Rozprava({ sekundy, celkem, hlasovani, onDal, onChciDal }: {
-  sekundy: number; celkem: number;
+  sekundy: number | null; celkem: number;
   /** null na jednom telefonu, tam rozhoduje ten, kdo ho drží. */
   hlasovani: { kolik: number; potreba: number; jaChci: boolean } | null;
   onDal: () => void;
@@ -29,9 +29,11 @@ export function Rozprava({ sekundy, celkem, hlasovani, onDal, onChciDal }: {
         <Odpocet sekundy={sekundy} obri />
       </div>
 
-      <div style={{ width: 200, height: 5, background: 'var(--ocel-600)' }}>
-        <div style={{ width: `${Math.round((sekundy / Math.max(1, celkem)) * 100)}%`, height: 5, background: 'var(--rez-400)', transition: 'width 1s linear' }} />
-      </div>
+      {sekundy !== null && (
+        <div style={{ width: 200, height: 5, background: 'var(--ocel-600)' }}>
+          <div style={{ width: `${Math.round((sekundy / Math.max(1, celkem)) * 100)}%`, height: 5, background: 'var(--rez-400)', transition: 'width 1s linear' }} />
+        </div>
+      )}
 
       <div style={{ border: '4px solid var(--ram)', padding: '20px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -96,9 +98,11 @@ export function Rozprava({ sekundy, celkem, hlasovani, onDal, onChciDal }: {
  * zadruhé rozbíjí šeptandu: věta "v kole 2 nominoval právě jeden sabotér"
  * nic neříká, když museli nominovat všichni.
  */
-export function Nominace({ kdo, jaId, vybrany, sekundy, nenominuju, onVybrat, onNikoho, onPotvrdit }: {
+export function Nominace({ kdo, jaId, vybrany, sekundy, nenominuju, imunni, onVybrat, onNikoho, onPotvrdit }: {
   kdo: Kdo[]; jaId: string; vybrany: string | null; sekundy: number | null;
   nenominuju: boolean;
+  /** Kdo má z noci imunitu. Nominovat ho jde, do rady se ale nedostane. */
+  imunni: string | null;
   onVybrat: (id: string) => void; onNikoho: () => void; onPotvrdit: () => void;
 }) {
   const cil = kdo.find((k) => k.id === vybrany);
@@ -110,9 +114,9 @@ export function Nominace({ kdo, jaId, vybrany, sekundy, nenominuju, onVybrat, on
       <Rostouci style={{ gap: 9 }}>
         {kdo.filter((k) => k.zivy).map((k) => (
           <Volba
-            key={k.id} zvoleno={k.id === vybrany} vypnuto={k.id === jaId}
+            key={k.id} zvoleno={k.id === vybrany} vypnuto={k.id === jaId || k.id === imunni}
             onClick={() => onVybrat(k.id)}
-            vpravo={k.id === jaId ? <Stitek tlumeny>TO JSI TY</Stitek> : undefined}
+            vpravo={k.id === jaId ? <Stitek tlumeny>TO JSI TY</Stitek> : k.id === imunni ? <Stitek tlumeny>IMUNITA</Stitek> : undefined}
           >
             {k.jmeno.toUpperCase()}
           </Volba>
@@ -142,19 +146,20 @@ export function Nominace({ kdo, jaId, vybrany, sekundy, nenominuju, onVybrat, on
 
 // ---------------------------------------------------------------- kandidáti
 
-export function Kandidati({ kandidati, nepostupuji, podil, onPreskocit }: {
-  kandidati: { jmeno: string; hlasu: number }[];
-  nepostupuji: { jmeno: string; hlasu: number }[];
+export function Kandidati({ kandidati, nepostupuji, imunni, podil, onPreskocit }: {
+  kandidati: { id: string; jmeno: string; hlasu: number }[];
+  nepostupuji: { id: string; jmeno: string; hlasu: number }[];
+  imunni: string | null;
   podil: number; onPreskocit?: () => void;
 }) {
   return (
     <Obrazovka>
-      <Hlavicka nadpis="PŘED RADU" vpravo={<Stitek tlumeny>JDOU DVA</Stitek>} />
+      <Hlavicka nadpis="PŘED RADU" vpravo={<Stitek tlumeny>{kandidati.length === 1 ? 'JDE JEDEN' : kandidati.length === 2 ? 'JDOU DVA' : `JDOU ${kandidati.length}`}</Stitek>} />
 
       <Rostouci style={{ justifyContent: 'center', gap: 14 }}>
         {kandidati.map((k, i) => (
           <Blok
-            key={k.jmeno} silny akcentni
+            key={k.id} silny akcentni
             style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', animation: `vyjet 240ms ease-out ${i * 120}ms both` }}
           >
             <span style={{ fontFamily: 'var(--font-nadpis)', fontSize: 34, letterSpacing: '0.03em' }}>{k.jmeno.toUpperCase()}</span>
@@ -170,8 +175,8 @@ export function Kandidati({ kandidati, nepostupuji, podil, onPreskocit }: {
             <Popisek>NEPOSTUPUJÍ</Popisek>
             <div style={{ marginTop: 9, display: 'flex', flexWrap: 'wrap', gap: 7 }}>
               {nepostupuji.map((n) => (
-                <span key={n.jmeno} style={{ fontFamily: 'var(--font-nadpis)', fontSize: 17, border: '2px solid var(--ram-tlum)', color: 'var(--ocel-400)', padding: '6px 10px' }}>
-                  {n.jmeno.toUpperCase()} · {n.hlasu}
+                <span key={n.id} style={{ fontFamily: 'var(--font-nadpis)', fontSize: 17, border: '2px solid var(--ram-tlum)', color: 'var(--ocel-400)', padding: '6px 10px' }}>
+                  {n.jmeno.toUpperCase()} · {n.hlasu}{n.id === imunni ? ' · IMUNITA' : ''}
                 </span>
               ))}
             </div>
@@ -179,7 +184,13 @@ export function Kandidati({ kandidati, nepostupuji, podil, onPreskocit }: {
         )}
       </Rostouci>
 
-      <Poznamka>Teď máte poslední slovo. Oba dostanou třicet vteřin na obhajobu.</Poznamka>
+      <Poznamka>
+        {kandidati.length > 2
+          ? `Remíza na druhém místě, před radu jdou všichni ${kandidati.length}. Každý dostane dvacet vteřin na obhajobu.`
+          : kandidati.length === 2
+            ? 'Teď mají poslední slovo. Každý dostane třicet vteřin na obhajobu.'
+            : 'Teď má poslední slovo. Třicet vteřin na obhajobu.'}
+      </Poznamka>
       <Ukazatel podil={podil} onPreskocit={onPreskocit} />
     </Obrazovka>
   );
@@ -187,12 +198,13 @@ export function Kandidati({ kandidati, nepostupuji, podil, onPreskocit }: {
 
 // ---------------------------------------------------------------- poslední slovo
 
-export function PosledniSlovo({ mluvi, potom, sekundy, podil, onPreskocit }: {
-  mluvi: string; potom: string | null; sekundy: number; podil: number; onPreskocit?: () => void;
+export function PosledniSlovo({ mluvi, poradi, celkem, dalsi, sekundy, podil, onPreskocit }: {
+  mluvi: string; poradi: number; celkem: number; dalsi: string | null;
+  sekundy: number | null; podil: number; onPreskocit?: () => void;
 }) {
   return (
     <Obrazovka tmava>
-      <Hlavicka nadpis="POSLEDNÍ SLOVO" vpravo={<Stitek tlumeny>PŘED RADOU</Stitek>} />
+      <Hlavicka nadpis="POSLEDNÍ SLOVO" vpravo={<Stitek tlumeny>{poradi} / {celkem}</Stitek>} />
 
       <div style={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 24 }}>
         <Popisek>TEĎ MLUVÍ</Popisek>
@@ -204,12 +216,12 @@ export function PosledniSlovo({ mluvi, potom, sekundy, podil, onPreskocit }: {
         <Odpocet sekundy={sekundy} obri />
       </div>
 
-      {potom && (
+      {dalsi && (
         <Blok style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <Popisek>POTOM DOSTANE SLOVO</Popisek>
             <div style={{ marginTop: 3, fontFamily: 'var(--font-nadpis)', fontSize: 24, letterSpacing: '0.03em', color: 'var(--ocel-400)' }}>
-              {potom.toUpperCase()}
+              {dalsi.toUpperCase()}
             </div>
           </div>
         </Blok>
@@ -224,9 +236,9 @@ export function PosledniSlovo({ mluvi, potom, sekundy, podil, onPreskocit }: {
 // ---------------------------------------------------------------- rada
 
 /**
- * Rada. Zdržet se je taky tah: při rovnosti hlasů nikdo neodchází, takže
- * kolo bez vyhoštění je legitimní výsledek. Stín, který se zdrží, svůj
- * jediný hlas neutratí.
+ * Rada. Zdržet se je taky tah: vyhoštění chce nadpoloviční většinu odevzdaných
+ * hlasů a nejméně dva, jinak nikdo neodchází. Kolo bez vyhoštění je legitimní
+ * výsledek. Stín, který se zdrží, svůj jediný hlas neutratí.
  */
 export function Rada({ kandidati, vybrany, sekundy, jsemStin, hlasUtracen, zdrzelSe, onVybrat, onZdrzet, onPotvrdit }: {
   kandidati: Kdo[]; vybrany: string | null; sekundy: number | null;
@@ -242,7 +254,7 @@ export function Rada({ kandidati, vybrany, sekundy, jsemStin, hlasUtracen, zdrze
         <Poznamka varovna={!hlasUtracen}>
           {hlasUtracen
             ? 'Svůj hlas stínu jsi už utratil. Mluvit můžeš dál, hlasovat ne.'
-            : 'Máš jeden hlas stínu na celý zbytek hry. Jakmile ho použiješ, je pryč.'}
+            : 'Máš jeden hlas stínu na celý zbytek hry. Jakmile ho použiješ, je pryč, ať rada dopadne jakkoliv.'}
         </Poznamka>
       ) : (
         <Veta>Kdo dnes odchází? Hlasy uvidí celý stůl.</Veta>
@@ -260,7 +272,7 @@ export function Rada({ kandidati, vybrany, sekundy, jsemStin, hlasUtracen, zdrze
         ))}
       </Rostouci>
 
-      <Poznamka>Při rovnosti neodchází nikdo. Zdržet se je taky odpověď.</Poznamka>
+      <Poznamka>Odchází jen ten, kdo má nadpoloviční většinu hlasů a aspoň dva. Zdržet se je taky odpověď.</Poznamka>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         <Tlacitko
@@ -285,7 +297,7 @@ export function Rada({ kandidati, vybrany, sekundy, jsemStin, hlasUtracen, zdrze
 export interface Hlas { kdo: string; komu: string; stin?: boolean }
 
 export function Hlasy({ kandidati, hlasy, odkryto, tma, podil, onPreskocit }: {
-  kandidati: { jmeno: string; hlasu: number; vede: boolean }[];
+  kandidati: { id: string; jmeno: string; hlasu: number; vede: boolean }[];
   hlasy: Hlas[]; odkryto: number; tma: boolean; podil: number; onPreskocit?: () => void;
 }) {
   if (tma) {
@@ -296,7 +308,7 @@ export function Hlasy({ kandidati, hlasy, odkryto, tma, podil, onPreskocit }: {
           <div style={{ fontFamily: 'var(--font-nadpis)', fontSize: 40, lineHeight: 1.05, color: 'var(--ocel-50)' }}>
             DNES SE NEDOZVÍTE,<br />KDO KOHO VOLIL.
           </div>
-          <Poznamka varovna>Někdo se postaral o to, aby hlasování zůstalo potmě.</Poznamka>
+          <Poznamka varovna>Sabotéři se postarali o to, aby hlasování zůstalo potmě. Výsledek se dozvíte za chvíli.</Poznamka>
         </div>
         <Ukazatel podil={podil} onPreskocit={onPreskocit} />
       </Obrazovka>
@@ -309,7 +321,7 @@ export function Hlasy({ kandidati, hlasy, odkryto, tma, podil, onPreskocit }: {
 
       <div style={{ display: 'flex', gap: 11 }}>
         {kandidati.map((k) => (
-          <div key={k.jmeno} style={{ flexGrow: 1, border: `4px solid ${k.vede ? 'var(--rez-400)' : 'var(--ram)'}`, padding: 12, textAlign: 'center' }}>
+          <div key={k.id} style={{ flexGrow: 1, border: `4px solid ${k.vede ? 'var(--rez-400)' : 'var(--ram)'}`, padding: 12, textAlign: 'center' }}>
             <div style={{ fontFamily: 'var(--font-nadpis)', fontSize: 20, letterSpacing: '0.03em', color: k.vede ? 'var(--text)' : 'var(--text-tlum)' }}>
               {k.jmeno.toUpperCase()}
             </div>
@@ -354,6 +366,7 @@ export function Hlasy({ kandidati, hlasy, odkryto, tma, podil, onPreskocit }: {
             </div>
           );
         })}
+        {hlasy.length === 0 && <Poznamka>Nikdo nehlasoval. Dnes nikdo neodchází.</Poznamka>}
       </Rostouci>
 
       <div style={{ fontSize: 'var(--t-meta-size)', fontWeight: 600, color: 'var(--text-tlum)', textAlign: 'center' }}>
@@ -400,7 +413,7 @@ export function Vyhosteni({ kolo, kdo, role, zbyvaSaboteru, zivych, podil, onPre
         ) : (
           <>
             <Razitko nadpis="NIKDO" popisek="STŮL SE NESHODL" />
-            <Poznamka>Rovnost hlasů. Dneska nikdo neodchází a vám ubyla jedna šichta.</Poznamka>
+            <Poznamka>Nikdo neměl většinu. Dneska nikdo neodchází a vám ubyla jedna šichta.</Poznamka>
           </>
         )}
       </div>

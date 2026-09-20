@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { prazdnyStav, reducer } from '../game/machine';
 import { pohledPro, type Pohled } from '../game/pohled';
 import type { Akce, HracId, Stav } from '../game/types';
-import { Spojeni, type StavSite } from './klient';
+import { Spojeni, type ChybaPripojeni, type StavSite } from './klient';
 
 /**
  * Jeden tvar dat pro obě větve.
@@ -10,6 +10,9 @@ import { Spojeni, type StavSite } from './klient';
  * Hot seat i online končí u téhož: jeden Pohled pro toho, kdo má zrovna
  * telefon v ruce. Díky tomu obrazovky vůbec netuší, jestli hra běží lokálně,
  * nebo přes síť, a mapování dat existuje jen jednou.
+ *
+ * Hra na jednom telefonu je vývojová pomůcka a nouzovka, ne hlavní režim.
+ * Drží stejná pravidla, ale nehlídá čas a předává se ručně.
  */
 
 export type Rezim = 'hotseat' | 'online';
@@ -20,6 +23,10 @@ export interface Hra {
   pohled: Pohled | null;
   poslat: (a: Akce) => void;
   sit: StavSite | null;
+  /** Proč nás server nepustil dovnitř. */
+  chyba: ChybaPripojeni | null;
+  /** Rozdíl hodin serveru a telefonu v ms. Odpočet se počítá z času serveru. */
+  posunHodin: number;
   /** Hot seat: kdo má právě držet telefon. Online vždy null. */
   naRade: HracId | null;
   /** Hot seat: surový stav pro šatnu, kde se hráči teprve sbírají. */
@@ -28,12 +35,19 @@ export interface Hra {
   hotseatHotovo: () => void;
 }
 
-const SEED = Math.floor(Math.random() * 1_000_000);
+/** Náhoda jednoho telefonu. Losuje se při načtení, každá partie má vlastní seed i identifikátor. */
+const SEED = Math.floor(Math.random() * 0xffffffff) || 1;
+const PARTIE = crypto.randomUUID();
 
 /** Fáze, kde se telefon podává dokola. Ostatní vidí celý stůl naráz. */
 const S_FRONTOU: ReadonlySet<string> = new Set(['rozdani', 'septanda', 'sichta', 'nominace', 'rada', 'noc']);
 
-function frontaProFazi(s: Stav): HracId[] {
+/**
+ * Pořadí, v jakém telefon obchází stůl. Vždycky podle sedadel: pořadí je
+ * veřejné, takže nesmí záviset na roli. Dřív šel v noci první předák a stůl
+ * to viděl.
+ */
+export function frontaProFazi(s: Stav): HracId[] {
   const zivi = s.hraci.filter((h) => h.zivy);
   switch (s.faze) {
     case 'rozdani':
@@ -43,18 +57,11 @@ function frontaProFazi(s: Stav): HracId[] {
       return sm?.parta ?? [];
     }
     case 'septanda':
-      // každý má vlastní větu, takže telefon musí projít všemi
-      return zivi.map((h) => h.id);
     case 'nominace':
+    case 'noc':
       return zivi.map((h) => h.id);
     case 'rada':
-      return [...zivi, ...s.hraci.filter((h) => !h.zivy && !h.hlasStinuUtracen)].map((h) => h.id);
-    case 'noc': {
-      const sab = zivi.filter((h) => s.role[h.id] === 'saboter').map((h) => h.id);
-      // předák první, ať je odměna vybraná dřív, než ostatní navrhují oběť
-      const serazeni = [...sab].sort((a) => (a === s.predak ? -1 : 1));
-      return [...serazeni, ...zivi.filter((h) => !sab.includes(h.id)).map((h) => h.id)];
-    }
+      return s.hraci.filter((h) => h.zivy || !h.hlasStinuUtracen).map((h) => h.id);
     default:
       return [];
   }
@@ -85,19 +92,31 @@ export function useHra(rezim: Rezim, kod: string | null, jmeno: string): Hra {
   // ------------------------------------------------------------- online
   const [pohledZeSite, setPohledZeSite] = useState<Pohled | null>(null);
   const [sit, setSit] = useState<StavSite | null>(null);
+  const [chyba, setChyba] = useState<ChybaPripojeni | null>(null);
+  const [posunHodin, setPosunHodin] = useState(0);
   const spojeni = useRef<Spojeni | null>(null);
 
   useEffect(() => {
     if (rezim !== 'online' || !kod) return;
-    const s = new Spojeni({ kod, jmeno, onPohled: setPohledZeSite, onStav: setSit });
+    setChyba(null);
+    const s = new Spojeni({
+      kod, jmeno,
+      onPohled: (p, posun) => { setPohledZeSite(p); setPosunHodin(posun); },
+      onStav: setSit,
+      onChyba: setChyba,
+    });
     spojeni.current = s;
     return () => { s.zavrit(); spojeni.current = null; };
   }, [rezim, kod, jmeno]);
 
   // ------------------------------------------------------------- společné
   const poslat = useCallback((a: Akce) => {
-    if (rezim === 'online') spojeni.current?.poslat(a);
-    else poslatLokalne(a);
+    if (rezim === 'online') {
+      spojeni.current?.poslat(a);
+      return;
+    }
+    // Na jednom telefonu dává partii identifikátor aplikace, online worker.
+    poslatLokalne(a.typ === 'ZACIT' ? { ...a, partie: PARTIE } : a);
   }, [rezim]);
 
   const pohled = useMemo<Pohled | null>(() => {
@@ -114,6 +133,8 @@ export function useHra(rezim: Rezim, kod: string | null, jmeno: string): Hra {
     pohled,
     poslat,
     sit,
+    chyba,
+    posunHodin,
     naRade: rezim === 'hotseat' && S_FRONTOU.has(stav.faze) ? naRade : null,
     hotseatStav: rezim === 'hotseat' ? stav : null,
     hotseatDal,

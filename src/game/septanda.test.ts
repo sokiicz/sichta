@@ -3,7 +3,7 @@ import { rng } from './random';
 import { prazdnyStav, reducer, zivi } from './machine';
 import { pohledPro } from './pohled';
 import {
-  platiTvrzeni, POCET_PRAVD, rozdatSeptandu, septandaPro, vetaZTvrzeni,
+  jmenuje, platiTvrzeni, POCET_PRAVD, rozdatSeptandu, septandaPro, vetaZTvrzeni,
   type KontextSeptandy, type Tvrzeni,
 } from './septanda';
 import type { Akce, HracId, Stav } from './types';
@@ -21,6 +21,7 @@ function kontextZeStavu(s: Stav): KontextSeptandy {
     jmeno: (id) => s.hraci.find((h) => h.id === id)?.jmeno ?? '?',
     predak: s.predak,
     zivi: zivi(s).map((h) => h.id),
+    pocetHracu: s.hraci.length,
     historie: s.historie,
     smeny: s.aktualni?.smeny ?? [],
     kolo: s.aktualni?.cislo ?? 0,
@@ -185,6 +186,7 @@ describe('Šeptanda', () => {
       jmeno: (id) => id,
       predak: 'a',
       zivi: ['a', 'b', 'c'],
+      pocetHracu: 3,
       historie: [],
       smeny: [],
       kolo: 1,
@@ -228,6 +230,53 @@ describe('Šeptanda', () => {
   });
 });
 
+describe('Žádná věta není důkaz', () => {
+  it('věta o hlasu jmenuje jen cíl se dvěma a víc hlasy', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      for (const { stav } of odehrat(5 + (seed % 8), seed)) {
+        for (const t of stav.aktualni?.pravdy ?? []) {
+          if (t.typ !== 'hlas') continue;
+          const kolo = stav.historie.find((h) => h.cislo === t.kolo)!;
+          const hlasu = [...Object.values(kolo.hlasy), ...Object.values(kolo.hlasyStinu)].filter((c) => c === t.cil).length;
+          expect(hlasu, `seed ${seed}, kolo ${t.kolo}`).toBeGreaterThanOrEqual(2);
+        }
+      }
+    }
+  });
+
+  it('věta o předákovi padne nejvýš jednou za partii', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const nalezy = odehrat(5 + (seed % 8), seed);
+      const posledni = nalezy[nalezy.length - 1]?.stav;
+      if (!posledni) continue;
+      const vsechna = [...posledni.historie, ...(posledni.aktualni ? [posledni.aktualni] : [])];
+      const oPredakovi = vsechna.flatMap((k) => k.pravdy).filter((t) => t.typ === 'predak');
+      expect(oPredakovi.length, `seed ${seed}`).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('v pěti hráčích nikdy nepadne "určitě není sabotér"', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      for (const { veta } of odehrat(5, seed)) expect(veta, `seed ${seed}`).not.toContain('Určitě není');
+    }
+  });
+
+  it('vlastní jméno se ve vlastní větě neobjeví, když je jiná pravda po ruce', () => {
+    let kontrol = 0;
+    for (let seed = 1; seed <= 30; seed++) {
+      for (const { stav, komu, veta } of odehrat(8, seed)) {
+        const pravdy = stav.aktualni?.pravdy ?? [];
+        const jina = pravdy.some((t) => !jmenuje(t, komu));
+        if (!jina) continue;
+        const jmeno = stav.hraci.find((h) => h.id === komu)!.jmeno.toUpperCase();
+        expect(veta, `seed ${seed}, ${komu}`).not.toMatch(new RegExp(`\\b${jmeno}\\b`));
+        kontrol++;
+      }
+    }
+    expect(kontrol).toBeGreaterThan(50);
+  });
+});
+
 describe('Špionská varianta', () => {
   it('sabotér nedostane větu, když je vypnutá', () => {
     for (let seed = 1; seed <= 25; seed++) {
@@ -236,7 +285,7 @@ describe('Špionská varianta', () => {
       s = reducer(s, { typ: 'ZMENIT_NASTAVENI', nastaveni: { septandaProSabotery: false } }, seed);
       s = reducer(s, { typ: 'ZACIT', seed }, seed);
       const k = { ...kontextZeStavu(s), proSabotery: false };
-      const vety = rozdatSeptandu(k, rng(seed * 31));
+      const { vety } = rozdatSeptandu(k, rng(seed * 31));
       for (const id of k.zivi) {
         if (s.role[id] === 'saboter') expect(vety[id], `seed ${seed}`).toBeUndefined();
         else expect(vety[id], `seed ${seed}`).toBeTruthy();
@@ -250,7 +299,7 @@ describe('Špionská varianta', () => {
       for (let i = 0; i < 8; i++) s = reducer(s, { typ: 'PRIDAT_HRACE', id: `h${i}`, jmeno: `H${i}` }, seed);
       s = reducer(s, { typ: 'ZACIT', seed }, seed);
       const k = kontextZeStavu(s);
-      const vety = rozdatSeptandu(k, rng(seed * 31));
+      const { vety } = rozdatSeptandu(k, rng(seed * 31));
       for (const id of k.zivi) expect(vety[id], `seed ${seed}`).toBeTruthy();
     }
   });

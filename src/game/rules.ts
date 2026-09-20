@@ -1,4 +1,7 @@
-/** Čísla vycházejí ze simulace, viz docs/design.md §3.1 a §9. Neměnit od oka. */
+/**
+ * Zdroj pravdy pro sestavy. Čísla vycházejí ze simulace, viz docs/design.md
+ * §3.1 a §9 a `docs/balance-sim.mjs`. Neměnit od oka.
+ */
 
 export const MIN_HRACU = 5;
 export const MAX_HRACU = 12;
@@ -10,44 +13,41 @@ interface Sestava {
 }
 
 /**
- * Výsledek simulace, ne odhad. Přeměřeno po přechodu na individuální šeptandu
- * se stropem tří pravd, viz docs/design.md §9. Čísla v závorce jsou úspěšnost
- * pracantů proti botovi, který hraje dokonale z čísel a nečte lidi, takže je
- * to strop, ne očekávaná hodnota.
+ * Přeměřeno 2026-09-20 na jednu směnu za kolo, strop tří pravd v šeptandě,
+ * 3000 až 5000 partií na sestavu (`scratch/jedna-smena.mjs`). První číslo
+ * v komentáři je úspěšnost pracantů proti botovi, který hraje dokonale
+ * z čísel a nečte lidi, takže je to strop, ne očekávaná hodnota. Druhé je
+ * podíl partií, které skončí vyčerpáním limitu šicht.
+ *
+ * Dvě směny za kolo (`smenyNaKolo: 2`) zůstávají v kódu jako experiment,
+ * ale žádná sestava je nepoužívá: bez odměny za padlou dopolední směnu jsou
+ * jen druhou stopou zdarma a stojí přes minutu telefonu v ruce navíc. Tempo
+ * úbytku drží nabídka odměn a to, že vražda nejde dvě kola po sobě.
  *
  * Pětka je zvláštní případ a simulace na ni nestačí. S pěti hráči a jedním
  * sabotérem existuje jen pět možných světů, takže je bot nevyřeší jako strop,
- * ale jako rovnici. Jeho 94 % o skutečném stole nevypovídá nic.
- *
- * Druhé číslo u každého řádku je podíl partií, které skončí vyčerpáním limitu
- * šicht. Dřív byl limit tak vysoký, že se na něj nedošlo skoro nikdy (2 až 4 %),
- * takže bylo počítadlo "zbývá šicht" jen dekorace a sabotéři neměli druhou
- * cestu k výhře. Teď na něj dojde pětina až polovina partií.
- *
- * Rozhodovalo se proto podle jediného, co se tam měřit dá, a to je odpadávání:
- *
- *   2 sabotéři  2,4 kola, 1,5 živého z 5, 68 % partií končí vybitím stolu
- *   1 sabotér   2,0 kola, 2,6 živého z 5, končí vyhoštěním
- *
- * Se dvěma se po první vraždě stojí dva na dva a sabotéři ovládnou hlasování.
- * Jeden sabotér je možná rychle odhalený, ale u stolu zůstane sedět víc lidí.
- * Tohle chce playtest, ne další simulaci.
+ * ale jako rovnici. Rozhodovalo se proto podle jediného, co se tam měřit dá,
+ * a to je odpadávání: se dvěma sabotéry se po první vraždě stojí dva na dva
+ * a sabotéři ovládnou hlasování. Jeden sabotér je možná rychle odhalený, ale
+ * u stolu zůstane sedět víc lidí. Šeptanda mu při pěti nedává větu "určitě
+ * není sabotér", jinak by partii vyřešila za dvě kola. Tohle chce playtest.
  */
 const SESTAVY: Record<number, Sestava> = {
   5: { saboteri: 1, limitSicht: 3, smenyNaKolo: 1 },   // viz komentář výš
   6: { saboteri: 2, limitSicht: 4, smenyNaKolo: 1 },   // 48 %, limit padne v 6 %
   7: { saboteri: 2, limitSicht: 3, smenyNaKolo: 1 },   // 46 %, limit padne v 33 %
   8: { saboteri: 2, limitSicht: 3, smenyNaKolo: 1 },   // 44 %, limit padne v 54 %
-  9: { saboteri: 3, limitSicht: 5, smenyNaKolo: 2 },   // 44 %, limit padne v 11 %
-  10: { saboteri: 3, limitSicht: 5, smenyNaKolo: 1 },  // 44 %, limit padne v 21 %
-  11: { saboteri: 3, limitSicht: 5, smenyNaKolo: 1 },  // 44 %, limit padne v 33 %
-  12: { saboteri: 4, limitSicht: 6, smenyNaKolo: 2 },  // 41 %, limit padne v 20 %
+  9: { saboteri: 3, limitSicht: 6, smenyNaKolo: 1 },   // 40 %, limit padne v 3 %
+  10: { saboteri: 3, limitSicht: 5, smenyNaKolo: 1 },  // 47 %, limit padne v 20 %
+  11: { saboteri: 3, limitSicht: 5, smenyNaKolo: 1 },  // 46 %, limit padne v 33 %
+  12: { saboteri: 4, limitSicht: 7, smenyNaKolo: 1 },  // 38 %, limit padne v 6 %
 };
 
 /** Pětka se dá hrát, ale vyvážit nejde. Stůl si to zaslouží vědět dopředu. */
 export function jeDivokaSestava(pocetHracu: number): boolean {
   return pocetHracu === 5;
 }
+
 export function sestavaPro(pocetHracu: number): Sestava {
   const s = SESTAVY[pocetHracu];
   if (!s) throw new Error(`Šichta se hraje od ${MIN_HRACU} do ${MAX_HRACU} hráčů, ne ${pocetHracu}.`);
@@ -66,8 +66,11 @@ export function velikostParty(zivych: number): number {
   return Math.max(1, Math.min(Math.ceil(zivych / 2), zivych - 1));
 }
 
-/** Délky fází v sekundách. Škálují s počtem hráčů, protože mluvit musí každý. */
-export function delkaFaze(faze: string, pocetZivych: number): number {
+/**
+ * Délky fází v sekundách. Škálují s počtem hráčů, protože mluvit musí každý.
+ * Jsou to stropy: fáze, ve které všichni odevzdali, končí dřív.
+ */
+export function delkaFaze(faze: string, pocetZivych: number, kandidatu = 2): number {
   switch (faze) {
     case 'predel':
       return 2;
@@ -88,7 +91,9 @@ export function delkaFaze(faze: string, pocetZivych: number): number {
     case 'kandidati':
       return 15;
     case 'posledni_slovo':
-      return 30;
+      // Každý kandidát dostane slovo zvlášť. Při remíze jich může být víc než
+      // dva, pak se čas na hlavu zkrátí, ať rada nečeká přes dvě minuty.
+      return kandidatu > 2 ? 20 : 30;
     case 'rada':
       return 45;
     case 'hlasy':

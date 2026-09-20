@@ -6,11 +6,21 @@ import type { Smena } from '../game/types';
 
 const NAZEV_SMENY: Record<Smena, string> = { dopoledni: 'DOPOLEDNÍ', odpoledni: 'ODPOLEDNÍ' };
 
+export interface Clen { id: string; jmeno: string }
+
+/** Kolik šicht zbývá, včetně té, co právě začíná. Skloňuje se podle čísla. */
+export function zbyvaSichtText(zbyva: number): string {
+  if (zbyva <= 1) return 'POSLEDNÍ ŠICHTA';
+  if (zbyva <= 4) return `ZBÝVAJÍ ${zbyva} ŠICHTY`;
+  return `ZBÝVÁ ${zbyva} ŠICHT`;
+}
+
 // ---------------------------------------------------------------- předěl
 
-export function Predel({ kolo, smena, zbyvaSicht, onDal }: {
-  kolo: number; smena: Smena; zbyvaSicht: number; onDal: () => void;
+export function Predel({ kolo, smena, limit, onDal }: {
+  kolo: number; smena: Smena; limit: number; onDal: () => void;
 }) {
+  const zbyva = limit - kolo + 1;
   return (
     <Obrazovka tmava rez>
       <button
@@ -34,12 +44,19 @@ export function Predel({ kolo, smena, zbyvaSicht, onDal }: {
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9, marginTop: 4 }}>
           <div style={{ display: 'flex', gap: 7 }}>
-            {Array.from({ length: kolo + zbyvaSicht }, (_, i) => (
-              <div key={i} style={{ width: 40, height: 6, background: i < kolo ? 'var(--rez-400)' : 'var(--ram-tlum)' }} />
+            {Array.from({ length: limit }, (_, i) => (
+              <div
+                key={i}
+                style={{
+                  width: 40, height: 6,
+                  // odpracované jsou rezavé, ta právě začínající tmavě rezavá, zbytek prázdný
+                  background: i < kolo - 1 ? 'var(--rez-400)' : i === kolo - 1 ? 'var(--rez-700)' : 'var(--ram-tlum)',
+                }}
+              />
             ))}
           </div>
           <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.16em', color: 'var(--text-tlum)' }}>
-            {zbyvaSicht === 0 ? 'POSLEDNÍ ŠICHTA' : zbyvaSicht === 1 ? 'ZBÝVÁ POSLEDNÍ ŠICHTA' : `ZBÝVAJÍ ${zbyvaSicht} ŠICHTY`}
+            {zbyvaSichtText(zbyva)}
           </span>
         </div>
       </button>
@@ -49,10 +66,10 @@ export function Predel({ kolo, smena, zbyvaSicht, onDal }: {
 
 // ---------------------------------------------------------------- zadání
 
-export function Zadani({ kolo, smena, parta, zustavaji, jsemVParte, podil, onPreskocit }: {
-  kolo: number; smena: Smena; parta: string[]; zustavaji: string[];
-  /** Na jednom telefonu vždy false: tohle je obrazovka stolu, nesmí nikoho vypíchnout. */
-  jsemVParte: boolean;
+export function Zadani({ kolo, smena, parta, zustavaji, jaId, podil, onPreskocit }: {
+  kolo: number; smena: Smena; parta: Clen[]; zustavaji: Clen[];
+  /** Na jednom telefonu null: tohle je obrazovka stolu, nesmí nikoho vypíchnout. */
+  jaId: string | null;
   podil: number; onPreskocit?: () => void;
 }) {
   return (
@@ -61,17 +78,19 @@ export function Zadani({ kolo, smena, parta, zustavaji, jsemVParte, podil, onPre
       <Popisek>NA ŠICHTU JDOU</Popisek>
 
       <Rostouci style={{ gap: 9 }}>
-        {parta.map((j, i) => (
+        {parta.map((c, i) => (
           <div
-            key={j}
+            key={c.id}
             style={{
-              border: `var(--ram-akce) solid ${jsemVParte && i === parta.length - 1 ? 'var(--rez-400)' : 'var(--ram-silny)'}`,
+              border: `var(--ram-akce) solid ${c.id === jaId ? 'var(--rez-400)' : 'var(--ram-silny)'}`,
               background: 'var(--blok)', padding: '15px 16px', flexShrink: 0,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
               fontFamily: 'var(--font-nadpis)', fontSize: 26, letterSpacing: '0.03em',
               animation: `vyjet 200ms ease-out ${i * 60}ms both`,
             }}
           >
-            {j.toUpperCase()}
+            <span>{c.jmeno.toUpperCase()}</span>
+            {c.id === jaId && <Stitek>TY</Stitek>}
           </div>
         ))}
 
@@ -79,9 +98,9 @@ export function Zadani({ kolo, smena, parta, zustavaji, jsemVParte, podil, onPre
           <div style={{ marginTop: 8, borderTop: '2px solid var(--ram-tlum)', paddingTop: 12 }}>
             <Popisek>ZŮSTÁVAJÍ</Popisek>
             <div style={{ marginTop: 9, display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-              {zustavaji.map((j) => (
-                <span key={j} style={{ fontFamily: 'var(--font-nadpis)', fontSize: 17, border: '2px solid var(--ram-tlum)', color: 'var(--ocel-400)', padding: '6px 10px' }}>
-                  {j.toUpperCase()}
+              {zustavaji.map((c) => (
+                <span key={c.id} style={{ fontFamily: 'var(--font-nadpis)', fontSize: 17, border: '2px solid var(--ram-tlum)', color: 'var(--ocel-400)', padding: '6px 10px' }}>
+                  {c.jmeno.toUpperCase()}
                 </span>
               ))}
             </div>
@@ -108,14 +127,15 @@ export function Zadani({ kolo, smena, parta, zustavaji, jsemVParte, podil, onPre
  * Po odevzdání se ukáže, co se doopravdy zapsalo. Obě role vidí stejně
  * postavenou obrazovku, jen s jiným slovem, a to jen na vlastním telefonu.
  */
-export function Volba({ kolo, smena, parta, mojeJmeno, sekundy, odevzdano, onVolba, onHotovo }: {
-  kolo: number; smena: Smena; parta: string[]; mojeJmeno: string;
+export function Volba({ kolo, smena, parta, jaId, sekundy, odevzdano, onVolba, onHotovo }: {
+  kolo: number; smena: Smena; parta: Clen[]; jaId: string;
   /** null na jednom telefonu: fázi tam nehlídají hodiny, telefon se podává. */
   sekundy: number | null;
   /** Co reducer zapsal. Dokud je null, ještě se nevolilo. */
   odevzdano: 'makat' | 'kazit' | null;
   onVolba: (v: 'makat' | 'kazit') => void;
-  onHotovo: () => void;
+  /** Na jednom telefonu posouvá frontu. Online tlačítko není, fázi ukončí server. */
+  onHotovo?: () => void;
 }) {
   return (
     <Obrazovka rez>
@@ -123,17 +143,15 @@ export function Volba({ kolo, smena, parta, mojeJmeno, sekundy, odevzdano, onVol
 
       <Blok silny popisek="PARTA NA ŠICHTU">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {parta.map((j) => (
+          {parta.map((c) => (
             <span
-              key={j}
+              key={c.id}
               style={{
                 fontFamily: 'var(--font-nadpis)', fontSize: 22, letterSpacing: '0.03em',
-                color: j === mojeJmeno ? 'var(--text-akcent)' : 'var(--text)',
-                borderTop: j === mojeJmeno ? '3px solid var(--ram)' : undefined,
-                paddingTop: j === mojeJmeno ? 10 : undefined,
+                color: c.id === jaId ? 'var(--text-akcent)' : 'var(--text)',
               }}
             >
-              {j.toUpperCase()}
+              {c.jmeno.toUpperCase()}
             </span>
           ))}
         </div>
@@ -145,7 +163,9 @@ export function Volba({ kolo, smena, parta, mojeJmeno, sekundy, odevzdano, onVol
             <Razitko nadpis={odevzdano === 'kazit' ? 'KAZIT' : 'MAKAT'} popisek="ZAPSÁNO" />
             <Veta>Změnit to už nejde. Nikdo se nedozví, co tu bylo.</Veta>
           </div>
-          <Tlacitko druh="hlavni" vyska={82} onClick={onHotovo}>HOTOVO</Tlacitko>
+          {onHotovo
+            ? <Tlacitko druh="hlavni" vyska={82} onClick={onHotovo}>HOTOVO</Tlacitko>
+            : <Poznamka>Čeká se na zbytek party. Jakmile odevzdají všichni, jde se dál.</Poznamka>}
         </>
       ) : (
         <>
@@ -173,11 +193,11 @@ export function Volba({ kolo, smena, parta, mojeJmeno, sekundy, odevzdano, onVol
 
 // ---------------------------------------------------------------- výsledek
 
-export function Vysledek({ kolo, smena, padla, sabotazi, parta, mojeJmeno, podil, onPreskocit }: {
+export function Vysledek({ kolo, smena, padla, sabotazi, parta, jaId, podil, onPreskocit }: {
   kolo: number; smena: Smena; padla: boolean; sabotazi: number;
-  parta: string[];
+  parta: Clen[];
   /** null na jednom telefonu: výsledek čte celý stůl, nikdo tu není "ty". */
-  mojeJmeno: string | null;
+  jaId: string | null;
   podil: number; onPreskocit?: () => void;
 }) {
   return (
@@ -205,16 +225,16 @@ export function Vysledek({ kolo, smena, padla, sabotazi, parta, mojeJmeno, podil
 
       <Blok popisek="BYLI NA ŠICHTĚ">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {parta.map((j) => (
+          {parta.map((c) => (
             <span
-              key={j}
+              key={c.id}
               style={{
                 fontFamily: 'var(--font-nadpis)', fontSize: 18, padding: '6px 10px',
-                border: `2px solid ${j === mojeJmeno ? 'var(--rez-400)' : 'var(--ram-silny)'}`,
-                color: j === mojeJmeno ? 'var(--text-akcent)' : 'var(--text)',
+                border: `2px solid ${c.id === jaId ? 'var(--rez-400)' : 'var(--ram-silny)'}`,
+                color: c.id === jaId ? 'var(--text-akcent)' : 'var(--text)',
               }}
             >
-              {j.toUpperCase()}
+              {c.jmeno.toUpperCase()}
             </span>
           ))}
         </div>
@@ -233,10 +253,15 @@ export function Vysledek({ kolo, smena, padla, sabotazi, parta, mojeJmeno, podil
  * zvrhne na výslech "ukaž, co ti přišlo", a kdo nemá co ukázat, je hned
  * sabotér. S ní je vymýšlení si legitimní tah.
  */
-export function Septanda({ text, onHotovo }: { text: string; onHotovo: () => void }) {
+export function Septanda({ text, onHotovo, sekundy }: {
+  text: string;
+  /** Na jednom telefonu posouvá frontu. Online tlačítko není, fázi ukončí server. */
+  onHotovo?: () => void;
+  sekundy: number | null;
+}) {
   return (
     <Obrazovka tmava>
-      <Hlavicka nadpis="ŠEPTANDA" vpravo={<Stitek tlumeny>JEN PRO TEBE</Stitek>} />
+      <Hlavicka nadpis="ŠEPTANDA" vpravo={sekundy === null ? <Stitek tlumeny>JEN PRO TEBE</Stitek> : <Odpocet sekundy={sekundy} />} />
 
       <div style={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 22 }}>
         <svg width="44" height="44" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -252,13 +277,15 @@ export function Septanda({ text, onHotovo }: { text: string; onHotovo: () => voi
         </div>
 
         <Poznamka>
-          Tvoje věta je pravdivá. Každý u stolu dostal jinou a nikdo si tu cizí
+          Tvoje věta je pravdivá. Každý u stolu dostal svou a nikdo si tu cizí
           neověří. Sabotéři dostali taky svou, takže si klidně vymyslí jinou.
           Říct ji nahlas, zamlčet, nebo zalhat, je na tobě.
         </Poznamka>
       </div>
 
-      <Tlacitko druh="hlavni" vyska={82} onClick={onHotovo}>PŘEČTENO</Tlacitko>
+      {onHotovo
+        ? <Tlacitko druh="hlavni" vyska={82} onClick={onHotovo}>PŘEČTENO</Tlacitko>
+        : <Poznamka>Za chvíli přijde rozprava. Telefon pak půjde dolů.</Poznamka>}
     </Obrazovka>
   );
 }

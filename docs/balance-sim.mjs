@@ -7,8 +7,14 @@
  * dedukce — co nevyřeší on, nevyřeší ani reálný stůl. Lidé mají navrch čtení
  * chování a blafování, což se simulovat nedá.
  *
- * Spuštění:  node sichta-sim.mjs
- *            node sichta-sim.mjs --games 20000
+ * Spuštění:  node docs/balance-sim.mjs
+ *            node docs/balance-sim.mjs --games 20000
+ *
+ * Co simulátor zjednodušuje oproti kódu hry (src/game/): rada je prostá
+ * většina bez nominací a kvóra, hlasy stínů utrácí heuristika, ze sedmi
+ * rodin šeptandy modeluje tři a `whisperFacts` říká, kolik pravd za kolo
+ * vznikne (hra rozdává tři pravdy mezi všechny, každému jednu). Náhoda je
+ * celá ze seedovaného `rnd()`, takže dva běhy dají stejná čísla.
  */
 
 const argv = process.argv.slice(2);
@@ -251,7 +257,7 @@ function simulateGame(cfg) {
           options.push(((t) => (H) => t.some((p) => H.has(p)))(trojice));
         }
         // jeden jistý pracant (váha 1, nejsilnější a proto nejvzácnější)
-        if (alivePrac.length && Math.random() < 1 / 12) {
+        if (alivePrac.length && rnd() < 1 / 12) {
           options.push(((a) => (H) => !H.has(a))(pick(alivePrac)));
         }
 

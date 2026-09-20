@@ -5,19 +5,25 @@ import {
 import type { Odmena } from '../game/types';
 import type { Kdo } from './rada';
 
-const POPIS: Record<Odmena, { nadpis: string; text: string }> = {
-  vrazda: { nadpis: 'VRAŽDA', text: 'Jeden hráč dnes v noci končí. Příští noc už vražda nepůjde, dvakrát po sobě to nejde.' },
-  imunita: { nadpis: 'IMUNITA', text: 'Kdokoliv podle tvé volby nemůže být v nejbližší radě vyhoštěn. I pracant.' },
-  tma: { nadpis: 'TMA', text: 'U nejbližší rady se neukáže, kdo koho volil.' },
+export const POPIS_ODMENY: Record<Odmena, { nadpis: string; text: string }> = {
+  vrazda: { nadpis: 'VRAŽDA', text: 'Jeden hráč dnes v noci končí. V příštím kole vražda nepůjde, dvě kola po sobě to nejde.' },
+  imunita: { nadpis: 'IMUNITA', text: 'Kdokoliv podle tvé volby nemůže být v nejbližší radě vyhoštěn. I pracant. Ráno se to řekne celému stolu.' },
+  tma: { nadpis: 'TMA', text: 'U nejbližší rady se neukáže, kdo koho volil. Že bude potmě, se stůl dozví ráno.' },
 };
 
 // ---------------------------------------------------------------- odměna
 
-export function Odmeny({ dostupne, vybrana, onVybrat, onPotvrdit }: {
+export function Odmeny({ dostupne, vybrana, cil, hraci, onVybrat, onCil, onPotvrdit }: {
   dostupne: Odmena[]; vybrana: Odmena | null;
-  onVybrat: (o: Odmena) => void; onPotvrdit: () => void;
+  /** Koho chrání imunita. Vybírá se až po zvolení imunity. */
+  cil: string | null; hraci: Kdo[];
+  onVybrat: (o: Odmena) => void; onCil: (id: string) => void; onPotvrdit: () => void;
 }) {
   const vse: Odmena[] = ['vrazda', 'imunita', 'tma'];
+  const potrebaCil = vybrana === 'imunita';
+  const hotovo = vybrana !== null && (!potrebaCil || cil !== null);
+  const chraneny = hraci.find((h) => h.id === cil);
+
   return (
     <Obrazovka tmava>
       <Hlavicka nadpis="NOC" vpravo={<Stitek>JSI PŘEDÁK</Stitek>} />
@@ -43,21 +49,32 @@ export function Odmeny({ dostupne, vybrana, onVybrat, onPotvrdit }: {
                 fontFamily: 'var(--font-nadpis)', fontSize: 26, letterSpacing: '0.04em',
                 color: zvoleno ? 'var(--text-akcent)' : lze ? 'var(--ocel-50)' : 'var(--ocel-400)',
               }}>
-                {POPIS[o].nadpis}
+                {POPIS_ODMENY[o].nadpis}
                 {!lze && <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', border: '2px solid var(--ram-tlum)', padding: '4px 8px' }}>NEJDE</span>}
               </span>
               <span style={{ fontFamily: 'var(--font-text)', fontSize: 'var(--t-meta-size)', lineHeight: 1.5, color: lze ? 'var(--text)' : 'var(--ocel-400)' }}>
-                {lze ? POPIS[o].text : 'Vraždili jste minulou noc. Dvakrát po sobě to nejde.'}
+                {lze ? POPIS_ODMENY[o].text : o === 'vrazda' ? 'Vraždili jste minulé kolo. Dvě kola po sobě to nejde.' : 'Teď to nejde.'}
               </span>
             </button>
           );
         })}
+
+        {potrebaCil && (
+          <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 9 }}>
+            <Popisek>KOHO CHRÁNIT</Popisek>
+            {hraci.map((h) => (
+              <Volba key={h.id} zvoleno={h.id === cil} onClick={() => onCil(h.id)}>
+                {h.jmeno.toUpperCase()}
+              </Volba>
+            ))}
+          </div>
+        )}
       </Rostouci>
 
-      <Poznamka>Ostatní sabotéři uvidí, co jsi vybral. Stůl ne.</Poznamka>
+      <Poznamka>Ostatní sabotéři uvidí, co jsi vybral. Stůl se to dozví ráno.</Poznamka>
 
-      <Tlacitko druh={vybrana ? 'hlavni' : 'tichy'} vyska={78} onClick={vybrana ? onPotvrdit : undefined}>
-        {vybrana ? `VZÍT ${POPIS[vybrana].nadpis}` : 'VYBER SI'}
+      <Tlacitko druh={hotovo ? 'hlavni' : 'tichy'} vyska={78} onClick={hotovo ? onPotvrdit : undefined}>
+        {!vybrana ? 'VYBER SI' : potrebaCil && !chraneny ? 'KOHO CHRÁNIT?' : `VZÍT ${POPIS_ODMENY[vybrana].nadpis}${chraneny ? `: ${chraneny.jmeno.toUpperCase()}` : ''}`}
       </Tlacitko>
     </Obrazovka>
   );
@@ -65,34 +82,60 @@ export function Odmeny({ dostupne, vybrana, onVybrat, onPotvrdit }: {
 
 // ---------------------------------------------------------------- oběť
 
-export function Obet({ cile, vybrany, sekundy, jsemPredak, odmena, onVybrat, onPotvrdit }: {
+/**
+ * Volba oběti. Sabotéři navrhují, předák rozhoduje a návrhy ostatních vidí
+ * u jmen, jak přicházejí. Navrhovat jde i dřív, než předák vybere odměnu:
+ * návrh je pro případ vraždy a nic nestojí.
+ */
+export function Obet({ cile, vybrany, sekundy, jsemPredak, odmena, navrhy, onVybrat, onPotvrdit }: {
   cile: (Kdo & { spolusaboter?: boolean })[]; vybrany: string | null; sekundy: number | null;
-  jsemPredak: boolean; odmena: Odmena; onVybrat: (id: string) => void; onPotvrdit: () => void;
+  jsemPredak: boolean;
+  /** null, dokud předák nevybral. */
+  odmena: Odmena | null;
+  /** Kdo z ostatních sabotérů koho navrhuje. Jména, ne id. */
+  navrhy: { kdo: string; komu: string }[];
+  onVybrat: (id: string) => void; onPotvrdit: () => void;
 }) {
   const cil = cile.find((c) => c.id === vybrany);
+  const navrhujici = (id: string) => navrhy.filter((n) => n.komu === id).map((n) => n.kdo.toUpperCase());
   return (
     <Obrazovka tmava>
       <Hlavicka nadpis="NOC" vpravo={<Odpocet sekundy={sekundy} />} />
 
       <Blok silny akcentni style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Popisek>PŘEDÁK VZAL</Popisek>
+        <Popisek>{odmena ? 'PŘEDÁK VZAL' : 'PŘEDÁK VYBÍRÁ'}</Popisek>
         <span style={{ fontFamily: 'var(--font-nadpis)', fontSize: 22, letterSpacing: '0.06em', color: 'var(--text-akcent)' }}>
-          {POPIS[odmena].nadpis}
+          {odmena ? POPIS_ODMENY[odmena].nadpis : '…'}
         </span>
       </Blok>
 
-      <Veta>{jsemPredak ? 'Rozhoduješ ty. Návrhy ostatních vidíš u jmen.' : 'Navrhni, kdo má odejít. Rozhodne předák.'}</Veta>
+      <Veta>
+        {jsemPredak
+          ? 'Rozhoduješ ty. Návrhy ostatních vidíš u jmen.'
+          : odmena === 'vrazda'
+            ? 'Navrhni, kdo má odejít. Rozhodne předák.'
+            : 'Navrhni pro případ vraždy, kdo má odejít. Rozhodne předák.'}
+      </Veta>
 
       <Rostouci style={{ gap: 9 }}>
-        {cile.map((c) => (
-          <Volba
-            key={c.id} zvoleno={c.id === vybrany} vypnuto={c.spolusaboter}
-            onClick={() => onVybrat(c.id)}
-            vpravo={c.spolusaboter ? <Stitek tlumeny>SABOTÉR</Stitek> : undefined}
-          >
-            {c.jmeno.toUpperCase()}
-          </Volba>
-        ))}
+        {cile.map((c) => {
+          const kdo = navrhujici(c.id);
+          return (
+            <Volba
+              key={c.id} zvoleno={c.id === vybrany} vypnuto={c.spolusaboter}
+              onClick={() => onVybrat(c.id)}
+              vpravo={
+                c.spolusaboter
+                  ? <Stitek tlumeny>SABOTÉR</Stitek>
+                  : kdo.length > 0
+                    ? <Stitek tlumeny>{kdo.length === 1 ? `NAVRHUJE ${kdo[0]}` : `NAVRHUJÍ ${kdo.length}`}</Stitek>
+                    : undefined
+              }
+            >
+              {c.jmeno.toUpperCase()}
+            </Volba>
+          );
+        })}
       </Rostouci>
 
       <Poznamka varovna>Zabít toho, komu stůl nejvíc věří, bolí nejvíc. Zabít toho, kdo tě tlačí, je nápadné.</Poznamka>
@@ -143,8 +186,11 @@ export function Podezrely({ cile, vybrany, sekundy, onVybrat, onPotvrdit }: {
 
 // ---------------------------------------------------------------- čeká se na noc
 
-export function CekaNoc({ hraci, hotovi, sekundy, podil, onPreskocit }: {
-  hraci: Kdo[]; hotovi: string[]; sekundy: number; podil: number; onPreskocit?: () => void;
+export function CekaNoc({ hraci, hotovi, sekundy, podil, poznamka, onPreskocit }: {
+  hraci: Kdo[]; hotovi: string[]; sekundy: number | null; podil: number;
+  /** Co sabotérům připomenout, například jakou odměnu předák vzal. */
+  poznamka?: string | null;
+  onPreskocit?: () => void;
 }) {
   return (
     <Obrazovka tmava>
@@ -154,6 +200,8 @@ export function CekaNoc({ hraci, hotovi, sekundy, podil, onPreskocit }: {
         <Fajfka />
         <span style={{ fontFamily: 'var(--font-nadpis)', fontSize: 21, letterSpacing: '0.05em', color: 'var(--text-akcent)' }}>ODESLÁNO</span>
       </Blok>
+
+      {poznamka && <Poznamka>{poznamka}</Poznamka>}
 
       <Blok style={{ flexGrow: 1, minHeight: 0, overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -183,8 +231,9 @@ export function CekaNoc({ hraci, hotovi, sekundy, podil, onPreskocit }: {
 
 // ---------------------------------------------------------------- ráno
 
-export function Rano({ kolo, obet, zivych, stinu, zbyvaSicht, podil, onPreskocit }: {
-  kolo: number; obet: string | null; zivych: number; stinu: number; zbyvaSicht: number; podil: number; onPreskocit?: () => void;
+export function Rano({ kolo, obet, imunni, tma, zivych, stinu, zbyvaSicht, podil, onPreskocit }: {
+  kolo: number; obet: string | null; imunni: string | null; tma: boolean;
+  zivych: number; stinu: number; zbyvaSicht: number; podil: number; onPreskocit?: () => void;
 }) {
   return (
     <Obrazovka zare>
@@ -199,7 +248,13 @@ export function Rano({ kolo, obet, zivych, stinu, zbyvaSicht, podil, onPreskocit
         ) : (
           <>
             <Razitko nadpis="NIKDO" popisek="DNES V NOCI" naklon={-1.2} />
-            <Poznamka>Noc proběhla v klidu. Což samo o sobě něco znamená.</Poznamka>
+            {imunni ? (
+              <Poznamka varovna>Sabotéři si vzali imunitu. {imunni} nemůže být v příští radě vyhoštěn, ať se hlasuje jakkoliv.</Poznamka>
+            ) : tma ? (
+              <Poznamka varovna>Sabotéři si vzali tmu. U příští rady se neukáže, kdo koho volil.</Poznamka>
+            ) : (
+              <Poznamka>Noc proběhla v klidu. Což samo o sobě něco znamená.</Poznamka>
+            )}
           </>
         )}
       </div>

@@ -19,6 +19,12 @@ import { vibrovat, VZOR } from './zvuk';
  */
 const Drzitel = createContext<string | null>(null);
 
+/**
+ * Plavou-li nad obrazovkou tlačítka přehledu a zápisníku, obsah si dole
+ * nechá místo, ať nezakrývají poznámku ani ukazatel postupu.
+ */
+export const Pomucky = createContext(false);
+
 export function PredejDrzitele({ jmeno, children }: { jmeno: string | null; children: ReactNode }) {
   return <Drzitel.Provider value={jmeno}>{children}</Drzitel.Provider>;
 }
@@ -57,6 +63,7 @@ export function Obrazovka({
   /** Rez zespoda. Patří tam, kde se rozhoduje. */
   rez?: boolean;
 }) {
+  const pomucky = useContext(Pomucky);
   return (
     <div
       style={{
@@ -99,7 +106,9 @@ export function Obrazovka({
           gap: 'var(--mezera-m)',
           padding: 'var(--okraj)',
           paddingTop: 'max(var(--okraj), env(safe-area-inset-top))',
-          paddingBottom: 'max(var(--okraj), env(safe-area-inset-bottom))',
+          paddingBottom: pomucky
+            ? 'calc(max(var(--okraj), env(safe-area-inset-bottom)) + 40px)'
+            : 'max(var(--okraj), env(safe-area-inset-bottom))',
         }}
       >
         {children}
@@ -227,10 +236,12 @@ function sDotekem(onClick?: () => void) {
 }
 
 export function Tlacitko({
-  children, onClick, druh = 'vedlejsi', vyska = 'var(--tlacitko-h)', zvoleno, popis,
+  children, onClick, druh = 'vedlejsi', vyska = 'var(--tlacitko-h)', zvoleno, popis, male,
 }: {
   children: ReactNode; onClick?: () => void; druh?: Druh;
   vyska?: number | string; zvoleno?: boolean; popis?: string;
+  /** Menší písmo pro delší nápisy, ať se na úzkém telefonu nelámou. */
+  male?: boolean;
 }) {
   return (
     <button
@@ -240,8 +251,8 @@ export function Tlacitko({
       aria-pressed={zvoleno}
       style={{
         width: '100%', minHeight: vyska, flexShrink: 0,
-        fontFamily: 'var(--font-nadpis)', fontSize: 'var(--t-button-size)',
-        letterSpacing: 'var(--t-button-ls)',
+        fontFamily: 'var(--font-nadpis)', fontSize: male ? 22 : 'var(--t-button-size)',
+        letterSpacing: male ? '0.14em' : 'var(--t-button-ls)',
         ...(zvoleno ? DRUHY.hlavni : DRUHY[druh]),
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
@@ -253,15 +264,18 @@ export function Tlacitko({
 
 /** Volba ze seznamu. Text vlevo, ať se dá číst při rychlém projíždění. */
 export function Volba({
-  children, onClick, zvoleno, vypnuto, vpravo,
+  children, onClick, zvoleno, vypnuto, vpravo, popis,
 }: {
   children: ReactNode; onClick?: () => void; zvoleno?: boolean; vypnuto?: boolean; vpravo?: ReactNode;
+  /** Přístupný název, když nápis sám neříká, co se přepíná. */
+  popis?: string;
 }) {
   return (
     <button
       type="button"
       onClick={vypnuto ? undefined : sDotekem(onClick)}
       disabled={vypnuto}
+      aria-label={popis ?? (typeof children === 'string' ? children : undefined)}
       aria-pressed={zvoleno}
       style={{
         width: '100%', minHeight: 62, flexShrink: 0,
@@ -292,6 +306,7 @@ export function RadekHrace({
   jmeno: string; stav?: StavRadku; vpravo?: ReactNode;
 }) {
   const hotovy = stav === 'hotovo' || stav === 'ty';
+  const pryc = stav === 'pryc';
   return (
     <div
       style={{
@@ -299,12 +314,14 @@ export function RadekHrace({
         borderLeft: `4px ${hotovy ? 'solid' : 'dashed'} ${hotovy ? 'var(--rez-400)' : 'var(--ram-tlum)'}`,
         background: hotovy ? 'rgba(0,0,0,0.20)' : 'transparent',
         padding: '11px 13px',
+        opacity: pryc ? 0.55 : 1,
         animation: 'vyjet 200ms ease-out',
       }}
     >
       <span style={{
         fontFamily: 'var(--font-nadpis)', fontSize: 'var(--t-name-size)',
         letterSpacing: 'var(--t-name-ls)',
+        textDecoration: pryc ? 'line-through' : undefined,
         color: stav === 'ty' ? 'var(--text-akcent)' : hotovy ? 'var(--text)' : 'var(--ocel-400)',
       }}>
         {jmeno}

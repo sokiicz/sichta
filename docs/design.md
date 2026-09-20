@@ -1,8 +1,8 @@
 # Šichta — herní design
 
-**Stav:** návrh v2, 2026-09-19 · **Název:** Šichta (EN: *Shift*) · **Týmy:** Pracanti vs. Sabotéři
+**Stav:** v1 podle kódu v `src/game/`, 2026-09-20 · **Název:** Šichta (EN: *Shift*) · **Týmy:** Pracanti vs. Sabotéři
 **Formát:** fyzická společenská hra pro 5–12 lidí v jedné místnosti, řízená PWA na telefonech hráčů. Bez vypravěče.
-**Délka partie:** 25–30 min (5–7 hráčů) · 45–60 min (8–12) · **Stack:** Vite PWA (GitHub Pages) + Supabase · **Repo slug:** `sichta`
+**Délka partie:** 25–30 min (5–7 hráčů) · 45–60 min (8–12) · **Stack:** Vite PWA + Cloudflare Durable Objects (jeden worker servíruje appku i drží stav) · **Repo slug:** `sichta`
 
 ---
 
@@ -32,43 +32,28 @@ Aplikace nahrazuje vypravěče: rozdá role, hlídá fáze, ukazuje každému p�
 
 ### 3.1 Sestava
 
-*Čísla níž jsou výsledek simulace (§9), ne odhad. Sloupec vpravo je výhra bota-pracanta; pásmo 35–60 % je použitelné.*
+*Čísla drží `src/game/rules.ts` a tahle tabulka je z něj opsaná. Jsou výsledek simulace (§9), ne odhad: přeměřeno 2026-09-20 na jednu směnu za kolo a strop tří pravd v šeptandě. Sloupec Bot je výhra bota-pracanta, pásmo 35–60 % je použitelné. Poslední sloupec je podíl partií, které skončí vyčerpáním limitu šicht.*
 
-Hra má **dva režimy** a hranice je mezi 7 a 8 hráči. Není to kosmetika — malý stůl chce strukturálně jinou partii.
-
-#### Krátká šichta — 5 až 7 hráčů
-
-| Hráčů | Sabotérů | Limit šicht | Směny | Bot |
+| Hráčů | Sabotérů | Limit šicht | Bot | Limit padne |
 |---|---|---|---|---|
-| 5 | 2 | 4 | 1 | 42,7 % |
-| 6 | 2 | 3 | 1 | 41,6 % |
-| 7 | 2 | 3 | 1 | 42,1 % |
+| 5 | 1 | 3 | neměřitelné | |
+| 6 | 2 | 4 | 48 % | 6 % |
+| 7 | 2 | 3 | 46 % | 33 % |
+| 8 | 2 | 3 | 44 % | 54 % |
+| 9 | 3 | 6 | 40 % | 3 % |
+| 10 | 3 | 5 | 47 % | 20 % |
+| 11 | 3 | 5 | 46 % | 33 % |
+| 12 | 4 | 7 | 38 % | 6 % |
 
-Krátká, ostrá partie na ~25–30 minut. **Páka není počet sabotérů, ale délka hry.** Při limitu 5 vyhrávají pracanti ~69 % a je to nuda; při limitu 3 to sedí. Málo kol znamená, že si pracanti nemůžou dovolit jedno promarněné vyhoštění — a přesně ten tlak dělá malý stůl zajímavým.
+**Jedna směna za kolo pro všechny stoly.** Dvě směny (§3.2.2) zůstávají v kódu jako experiment, žádná sestava je nepoužívá. Tempo úbytku drží nabídka odměn (§3.2.1) a to, že vražda nejde dvě kola po sobě.
+
+**Páka je délka hry, ne počet sabotérů.** U malého stolu při limitu 5 vyhrávají pracanti přes dvě třetiny partií a je to nuda; při limitu 3 to sedí. Málo kol znamená, že si pracanti nemůžou dovolit jedno promarněné vyhoštění, a přesně ten tlak dělá malý stůl zajímavým.
 
 **Čtyři hráči jsou nehratelní.** V celé prohledané mřížce (sabotéři × limit × šeptanda × směny) neexistuje jediná konfigurace v pásmu. Tři pracanti proti jednomu sabotérovi je hádání, ne dedukce.
 
-**Pět hráčů je zvláštní případ a simulace na něj nestačí.** S pěti hráči a jedním sabotérem existuje jen pět možných světů. Bot je nevyřeší jako strop, ale jako rovnici, takže jeho 94 % o skutečném stole nevypovídá nic. Rozhodovalo se proto podle jediného, co se tam měřit dá, a to je odpadávání:
-
-| pětka | kol | živých na konci | jak to končí |
-|---|---|---|---|
-| 2 sabotéři | 2,4 | 1,5 z 5 | 68 % vybitím stolu |
-| 1 sabotér | 2,0 | 2,6 z 5 | vyhoštěním |
-
-Se dvěma se po první vraždě stojí dva na dva a sabotéři ovládnou hlasování. **V pěti proto kazí jen jeden.** Partie je krátká a může skončit tím, že ho najdou hned, ale u stolu zůstane sedět víc lidí. Aplikace to v šatně řekne dopředu. Tohle chce playtest, ne další simulaci.
+**Pětka je tréninková partie.** S pěti hráči a jedním sabotérem existuje jen pět možných světů, bot je nevyřeší jako strop, ale jako rovnici, a jeho čísla o skutečném stole nevypovídají nic. Se dvěma sabotéry se po první vraždě stojí dva na dva a sabotéři ovládnou hlasování, proto kazí jen jeden. Šeptanda mu při pěti nedává větu „určitě není sabotér“, jinak by partii vyřešila za dvě kola. Aplikace to v šatně řekne dopředu. Tohle chce playtest, ne další simulaci.
 
 **Šest je první velikost, kde se hra pořádně rozjede.**
-
-#### Plná šichta — 8 až 12 hráčů
-
-| Hráčů | Sabotérů | Limit šicht | Směny | Bot |
-|---|---|---|---|---|
-| 8 | 3 | 6 | 2 | 48,1 % |
-| 9 | 3 | 5 | 2 | 47,8 % |
-| 10 | 3 | 6 | 2 | ~57 % |
-| 12 | 4 | 7 | 2 | ~46 % |
-
-Delší partie na 45–60 minut se dvěma směnami za kolo (§3.2.2).
 
 #### Proč to končí u dvanácti
 
@@ -111,10 +96,12 @@ Kolo má 8 fází. Časy jsou pro 8 hráčů.
 | 2 | **Šichta** | 45 s | v ruce | Každý člen party tajně mačká **MAKAT** / **KAZIT**. Pracantovi je tlačítko KAZIT zašedlé — "omylem jsem sabotoval" nesmí existovat. Sabotér vidí **jmenovitě, kdo ze sabotérů jde na šichtu s ním**. |
 | 3 | **Výsledek** | 22 s | dolů | "Šichta prošla" / "Šichta padla, kazili **2**". Počet sabotáží se ukazuje. Delší schválně: je to jediný tvrdý důkaz v kole a musí se zapamatovat. |
 | 4 | **Šeptanda** | 20 s | v ruce | Jen když šichta prošla. **Každý dostane vlastní pravdivou větu**, nikdo si cizí neověří (viz 3.5). |
-| 5 | **Rozprava** | 4 min | **DOLŮ** | Mluví se. Aplikace ukazuje jen velký timer a přehled: historie part, výsledků a **kompletní historie hlasování**. |
-| 6 | **Nominace** | 60 s | v ruce | Všichni najednou tajně nominují jednoho hráče. Do rady jdou dva s nejvíc nominacemi. Stíny nenominují. |
-| 7 | **Rada** | 45 s | v ruce | Hlasuje se mezi nominovanými. **Aplikace pak veřejně ukáže, kdo koho volil.** Remíza → nikdo neodchází (a to je tlak). |
+| 5 | **Rozprava** | 3 až 5 min | **DOLŮ** | Mluví se. Aplikace ukazuje jen velký odpočet. Přehled historie je během rozpravy zamčený: kdo chce vědět, kdo byl na které šichtě, ptá se nahlas. Nadpoloviční většina živých může rozpravu utnout. |
+| 6 | **Nominace** | 60 s | v ruce | Všichni najednou tajně nominují jednoho hráče, nebo nikoho. Do rady jdou dva s nejvíc nominacemi (při remíze na druhém místě všichni). Kdo má z noci imunitu, do rady nejde. Stíny nenominují. |
+| 7 | **Rada** | 45 s | v ruce | Nejdřív dostane každý kandidát poslední slovo (30 s, při třech a víc 20 s). Pak se hlasuje mezi nominovanými, zdržet se je taky tah. **Aplikace pak veřejně ukáže, kdo koho volil.** Odchází jen ten, kdo má nadpoloviční většinu odevzdaných hlasů a nejméně dva. Jinak nikdo (a to je tlak). |
 | 8 | **Noc** | 60 s | v ruce | Jen když šichta padla: **Předák vybere odměnu** (viz 3.2.1); u vraždy sabotéři navrhnou oběť a Předák rozhodne (viz 3.4). Všichni ostatní zároveň zapisují svého hlavního podezřelého — sčítá se do ceny "Nejlepší čuch". Fáze trvá stejně dlouho, i když nikdo neumírá. |
+
+**Časy jsou stropy, ne normy.** Fáze, ve které odevzdali všichni, na které se čeká, skončí do dvou vteřin. Kdo se odpojí uprostřed fáze, kde se od něj něco čeká, hru zastaví; zakladatel může rozhodnout, že se hraje bez něj.
 
 **Vyhoštěnému se veřejně odhalí role.** Bez odhalení se parta nikdy nenaučí hrát a nezažije ten moment.
 
@@ -132,13 +119,17 @@ Proč zrovna takhle: bez toho umírali dva lidé za kolo a partie skončila vybi
 
 Navíc je každá z těch tří tempem jinam. **Tma** je proti stolu, jehož hlavní důkaz je hlasovací záznam, mimořádně tvrdá. **Imunita** umožňuje hodit to na nevinného. A samotná volba je informace — *vzali imunitu, proč zrovna teď?*
 
-**Vražda nejde dvakrát po sobě.** Aplikace to tlačítko po vraždě prostě zašedne. Tím padá poslední námitka proti cooldownu — není co si pamatovat, hráč vidí, co smí, a rozhoduje se jen mezi tím, co je na obrazovce.
+**Vražda nejde dvě kola po sobě.** Počítá se v kolech, ne v nocích: prošlá šichta mezi dvěma vraždami stačí, přesně tak to měřila simulace. Aplikace tlačítko po vraždě prostě zašedne. Tím padá poslední námitka proti cooldownu — není co si pamatovat, hráč vidí, co smí, a rozhoduje se jen mezi tím, co je na obrazovce.
 
 **Všichni sabotéři vidí, co Předák vybral.** Jsou tým, nemá smysl to před nimi tajit — a v režimu *Tajný sabotér* (§6.1) je právě tohle ta obrazovka, kde falešní sabotéři poprvé zapochybují.
 
+**Imunitu i tmu se stůl dozví ráno.** Skrytá imunita by se stejně prozradila tím, že nominovaný nepostoupí do rady; veřejná je tah do rozpravy (*proč zrovna Klára?*). Tma se pozná tím, že nikdo neumřel a nikdo nemá imunitu, tak ji ráno rovnou řekneme.
+
 > Aby nabídka fungovala, musí být alternativy **opravdu lákavé**. Kdyby sabotéři brali vraždu pokaždé (a mohli), jsme zpátky na 31 % a tempo je rozbité. Je to první věc ke sledování při playtestu.
 
-### 3.2.2 Dvě směny — dopolední a odpolední (8+ hráčů)
+### 3.2.2 Dvě směny — dopolední a odpolední (experiment, ve v1 vypnuto)
+
+> **Stav 2026-09-20:** kód dvě směny umí, ale žádná sestava je nepoužívá. Bez odměny za padlou dopolední směnu jsou jen druhou stopou zdarma pro pracanty a stojí přes minutu telefonu v ruce navíc. Tempo úbytku drží nabídka odměn a cooldown vražd. Zapnou se, až playtest s 9 a víc hráči ukáže, že stolu chybí stopy, a to i s dopolední odměnou. Zbytek téhle sekce popisuje původní záměr.
 
 Při osmi a víc hráčích má kolo **dvě šichty** místo jedné, každou s vlastní partou:
 
@@ -173,7 +164,7 @@ Pořád to není důkaz. "Oba jsou mezi těmi čtyřmi" je šest kombinací, ne 
 
 Jeden ze sabotérů je **Předák**. Ostatní sabotéři to vědí, stůl ne.
 
-- V noci **sabotéři hlasují**, koho odstranit. Předák pak vidí výsledek a rozhodne, jestli ho poslechne, nebo zabije podle sebe. Žádné losování při shodě — jeden člověk vlastní to rozhodnutí.
+- V noci **sabotéři navrhují**, koho odstranit, a to klidně dřív, než Předák vybere odměnu. Předák vidí návrhy u jmen a rozhodne, jestli je poslechne, nebo zabije podle sebe. Žádné losování při shodě — jeden člověk vlastní to rozhodnutí.
 - Ostatní sabotéři **vidí, že přehlasoval**, ale v režimu *Tajný sabotér* (§6.1) nevědí proč. Tohle je jediný kus mechaniky, který ten režim potřebuje — proto ho v1 zavádí, i když ho sama nevyužije.
 - Když Předák zemře nebo je vyhoštěn, funkce přechází na dalšího žijícího sabotéra (pořadí podle sedadla, aplikace to ví předem).
 - **Hook pro v3:** v režimu *Tajný sabotér* je Předák jediný pravý sabotér — ostatní si jen myslí, že sabotéři jsou. V tom režimu se označení "Předák" nikomu nezobrazuje, aby to neprozradilo.
@@ -215,6 +206,13 @@ Rodiny tvrzení, všechny vždy pravdivé:
    o hlasování se smí týkat jen kol, která doběhla. Dřív to bylo špatně a po
    první šichtě to hlásilo "aspoň jeden sabotér nenominoval", což byla pravda
    jen proto, že ještě nikdo nenominoval.
+
+5. **Žádná věta není důkaz.** Hlasy v radě jsou veřejné, takže věta „hlas
+   sabotéra padl na X“ by jmenovala sabotéra rovnou, když X dostal jediný
+   hlas. Vybírají se proto jen cíle se dvěma a víc hlasy. Věta o předákovi se
+   s veřejnými partami protíná napříč koly, proto padne nejvýš jednou za
+   partii. Vlastní jméno ve vlastní větě se nerozdává, když je jiná pravda
+   po ruce.
 
 **Zakázaný typ šeptandy:** cokoliv ve tvaru "mezi A, B, C je právě jeden
 sabotér". To je zadání logické úlohy, ne pomluva.
@@ -277,7 +275,7 @@ Vyřazený zůstává sedět u stolu a:
 - **mluví úplně normálně** dál, celou zbývající hru
 - **nesmí nominovat** a **nesmí být nominován**
 - **nechodí na šichty**
-- má **jeden jediný hlas na celý zbytek hry** — kdykoliv ho v radě použije, je nadobro pryč
+- má **jeden jediný hlas na celý zbytek hry** — kdykoliv ho v radě použije, je nadobro pryč, i když rada skončí bez vyhoštění. Zdržet se ho neutratí.
 
 Model z Blood on the Clocktower, léty prověřený. Únik informací ("já jsem byl pracant, věřte mi") je vyvážený tím, že mezi Stíny jsou i sabotéři, kteří tvrdí totéž.
 
@@ -389,45 +387,35 @@ Jen pro 10+ hráčů, jen po dvou padlých šichtách za sebou.
 
 ### 7.1 Zásady
 
-**Klient nikdy nečte nic, co nemá vidět.** Neskládáme to z RLS pravidel nad deseti tabulkami — to je děravé.
+**Klient nikdy nečte nic, co nemá vidět.** Jediná cesta, kterou stav opouští server, je `pohledPro()` v `src/game/pohled.ts`. Spočítá přesně to, co tenhle hráč v téhle fázi smí vidět, a vrátí hotový objekt. Má vlastní testy na únik rolí i na časování: hlasy až od odhalení, oběť až ráno, odměna z noci stolu až ráno.
 
-> Jediné čtecí API je RPC **`get_my_view(room_code, client_token)`**, která na serveru spočítá přesně to, co tenhle hráč v téhle fázi smí vidět, a vrátí hotový objekt. Realtime kanál slouží **jen k oznámení "stav se změnil, načti si view"** — neposílá žádná data.
+**Pravidla žijí jen v `src/game/`.** Čistý reducer bez UI, bez hodin a bez náhody zvenčí: náhodu dostane jako `seed`, hodiny nemá vůbec. Ten samý kód běží v prohlížeči (hra na jednom telefonu, vývojová pomůcka) i v Durable Objectu (hra po síti).
 
-Rozdání rolí a vyhodnocení fází běží v **Edge Functions / SQL funkcích**, nikdy na klientovi.
+**Kdo smí co poslat, rozhoduje `src/game/opravneni.ts`.** Fáze posouvá jen server, hru spouští jen zakladatel, odměnu vybírá jen předák, každý jedná jen sám za sebe. Worker to volá s id hráče podle tokenu, co neprojde, se zahodí.
 
-### 7.2 Datový model (náčrt)
+### 7.2 Durable Object
 
-```
-rooms     id, code, host_player_id, status, config jsonb,
-          phase, round_no, phase_ends_at, created_at
-players   id, room_id, name, seat, is_alive, ghost_vote_used,
-          client_token, last_seen_at
-roles     room_id, player_id, role, is_foreman   -- klient nikdy nečte přímo
-rounds    room_id, round_no, team jsonb, sabotage_count,
-          whisper, banished_id, victim_id
-actions   room_id, round_no, player_id, kind, payload jsonb
-          -- kind: shift_vote | nomination | council_vote
-          --       night_proposal | foreman_decision | suspicion
-```
+Jedna instance na jednu místnost. Drží `stav` (tvaru `Stav` z `types.ts`), mapu `token → hráč`, náhodu místnosti `seed` (losuje se při založení a znovu při každém startu partie, nikdy neopouští server), počítadlo id hráčů a typ naplánovaného alarmu.
 
-### 7.3 Reconnect — hlavní technické riziko
+Fáze posouvá `alarm()`. Po každé akci worker rozhodne, co s odpočtem: nová fáze dostane plnou délku z `delkaFaze()`, fáze, ve které odevzdali všichni (`fazeHotova()`), skončí do dvou vteřin, pauza alarm smaže a zapamatuje si zbývající čas, návrat ho obnoví od stejné vteřiny. Dohraná místnost se smaže po šesti hodinách, prázdná šatna po dni.
 
-Telefon se zamkne za 30 s, iOS Safari kartu uspí. Když stav drží klient, hra uprostřed umře.
+### 7.3 Reconnect
 
-- **Veškerý stav je na serveru.** Klient je čistá zobrazovací vrstva bez vlastní pravdy.
-- Návrat přes `client_token` v `localStorage` → `get_my_view` → hráč pokračuje.
-- **Timery se nikdy nepočítají z hodin klienta.** Server drží `phase_ends_at`, klient si jednou změří offset a odpočet jen vykresluje.
-- Posun fáze: RPC `advance_phase(room, expected_phase, expected_round)`, **idempotentní** — zavolá ji kterýkoliv klient, druhé zavolání neudělá nic. Žádný cron, žádné náklady.
-- `navigator.wakeLock` drží displej během aktivních fází.
-- `last_seen_at` + indikátor odpojeného hráče.
+Telefon se zamkne za 30 s, iOS Safari kartu uspí. Proto:
+
+- **Veškerý stav je na serveru.** Klient je čistá zobrazovací vrstva bez vlastní pravdy; návrat přes `token` v `localStorage` vrátí téhož hráče.
+- **Odpočet se nepočítá z hodin telefonu.** Server posílá v pohledu `konecFaze` a s každou zprávou svůj čas `ted`; klient si spočítá posun hodin a odpočet jen kreslí.
+- **Wake lock** drží displej během hry (`src/ui/bdeni.ts`). Bez něj by rozprava s telefony dolů skončila hromadným výpadkem.
+- **Pauza jen tam, kde se od odpojeného něco čeká** (rozdání, šichta, nominace, rada, noc). V rozpravě nebo u výsledku se nečeká, kdo se vrátí, pokračuje. Zakladatel může rozhodnout, že se hraje bez něj: jeho volba pak propadne.
+- Do rozehrané hry se nový hráč nepřidá, dostane vysvětlení. Kdo v šatně vypadl a nevrátil se, se startem odpadne.
 
 ### 7.4 Nasazení
 
-Statická PWA na GitHub Pages (`base: '/sichta/'`), Supabase drží stav. Připojení kódem místnosti nebo QR.
+Statická PWA i API běží na jednom Cloudflare Workeru (`wrangler.toml`, `[assets]` servíruje `dist/`). Žádný CORS, žádná druhá adresa. Připojení kódem místnosti nebo odkazem `?k=KÓD`. Varianta na Supabase, která tu dřív ležela jako slepá větev, je smazaná; kdo by ji chtěl, najde ji v historii gitu do commitu `4497454`.
 
 ### 7.5 Zvuk a tempo
 
-V tomhle formátu rozhoduje **rituál** — znělka noci, odpočet poslední minuty rozpravy, úder při odhalení vyhoštěného. Bude to na zážitek rozhodovat víc než počet funkcí.
+V tomhle formátu rozhoduje **rituál** — znělka noci, odpočet poslední minuty rozpravy, úder při odhalení vyhoštěného. Bude to na zážitek rozhodovat víc než počet funkcí. Nahlas hraje jen zakladatelův telefon, vibrace má každý svoje (iPhone ji neumí).
 
 ---
 
@@ -444,7 +432,7 @@ V tomhle formátu rozhoduje **rituál** — znělka noci, odpočet poslední min
 
 ## 9. Simulace vyvážení — výsledky
 
-Skript: [`sichta-sim.mjs`](sichta-sim.mjs) · spuštění `node sichta-sim.mjs --games 6000`
+Skript: [`balance-sim.mjs`](balance-sim.mjs) · spuštění `node docs/balance-sim.mjs --games 6000`
 
 ### Metodika
 
@@ -477,9 +465,20 @@ Bot má dokonalou paměť a počítá přesně. **Reálný hráč je na mechanic
 3. **Limit šicht neprodává to, co jsem tvrdil.** Psal jsem, že je to hlavní tlak na pracanty — ve skutečnosti se při osmi hráčích uplatní v 3,5 % partií. Je to pojistka proti zdržování u velkých stolů, ne motor napětí. Malé stoly hru dohrají vyřešením nebo vybitím.
 4. **Ukazovat počet sabotáží je čistý zisk** — na vyvážení nesáhne a přidá sabotérům rozhodování.
 
+### Přeměření 2026-09-20: jedna směna, strop tří pravd
+
+Po přechodu na individuální šeptandu se stropem tří pravd a po vypnutí dvou směn se sestavy přeměřily znovu (`scratch/jedna-smena.mjs`, 3000 až 5000 partií na sestavu). Výsledek je tabulka v §3.1. Kandidáti, kteří neprošli:
+
+| Hráčů | Sestava | Bot | Limit padne | Proč ne |
+|---|---|---|---|---|
+| 9 | 3 sab, limit 5 | 37,8 % | 10 % | pod pásmem |
+| 12 | 3 sab, limit 5 | 43,0 % | 50 % | půlka partií končí vyčerpáním limitu, ne vyřešením |
+| 12 | 3 sab, limit 6 | 65,1 % | 16 % | nad pásmem |
+| 12 | 4 sab, limit 6 | 29,7 % | 21 % | pod pásmem |
+
 ### Známá zjednodušení simulátoru
 
-Rada je zjednodušená na prostou většinu (bez fáze nominací a soubojů dvou kandidátů). Hlasy Stínů utrácí heuristika (těsné hlasování nebo konec hry). Ze sedmi navržených typů šeptandy jsou implementované tři. Minihry, banka ani upgrady ve v2 se nesimulují vůbec.
+Rada je zjednodušená na prostou většinu (bez fáze nominací, kvóra a soubojů dvou kandidátů). Šeptandu simuluje jinak než kód: modeluje tři rodiny z osmi a `whisperFacts` říká, kolik pravd za kolo vznikne, zatímco hra rozdává tři pravdy mezi všechny. Hlasy Stínů utrácí heuristika (těsné hlasování nebo konec hry). Ze sedmi navržených typů šeptandy jsou implementované tři. Minihry, banka ani upgrady ve v2 se nesimulují vůbec.
 
 **Jedno zjednodušení je zásadní a zneplatňuje jeden výsledek:** všichni bot-pracanti počítají tutéž posterior a hlasují proto prakticky jednotně. Reálný stůl je rozhádaný a hlasy se tříští. Proto **výsledek u pravidla "rada vyžaduje většinu živých" (31,0 % → 31,2 %, tedy nic) není důvěryhodný** — testuje se tím přesně ta interakce s roztříštěným hlasováním, kterou tihle boti neumí vyrobit. U stolu by to fungovat mohlo. Chce to playtest, ne další simulaci.
 
@@ -499,7 +498,9 @@ Rada je zjednodušená na prostou většinu (bez fáze nominací a soubojů dvou
 
 ## 11. Otevřené otázky
 
-- **Limit šicht.** Odhad, ne výsledek. První věc k odsimulování.
+- **Limit šicht.** Přeměřený simulací (§9), ale bot je strop, ne stůl. Doladí se po playtestu z protokolu partie.
+- **Dvě směny.** Vypnuté (§3.2.2). Zapnou se, až velkému stolu prokazatelně chybí stopy.
+- **Kvórum v radě.** Nadpoloviční většina odevzdaných hlasů a nejméně dva. Při třech a víc kandidátech bude kolo bez vyhoštění častější; jestli to stůl unese, ukáže playtest.
 - **Délka rozpravy.** 4 minuty je odhad; nejspíš 3 min při 5–6 hráčích, 5 min při 10+.
 - **Stín nemůže být nominován** — správně? Alternativa: může, a je to způsob, jak zlikvidovat nepohodlný hlas stínu.
 - **Kolo 1 a koordinace sabotérů.** V prvním kole ještě neproběhla noc, takže Domluva (v1.2) není k dispozici. Nechat první kolo naslepo, nebo dát krátkou poradu před první šichtou?

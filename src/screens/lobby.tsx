@@ -6,7 +6,6 @@ import {
 import { MAX_HRACU, MIN_HRACU, sestavaPro } from '../game/rules';
 import { ABECEDA_KODU, DELKA_KODU } from '../game/kod';
 import { jeDivokaSestava } from '../game/rules';
-import type { Hrac } from '../game/types';
 
 // ---------------------------------------------------------------- úvod
 
@@ -33,11 +32,11 @@ export function Uvod({ siteDostupna, chyba, onZalozit, onPripojit, onHotSeat, on
           <>
             <Tlacitko druh="hlavni" onClick={onZalozit} vyska={78}>ZALOŽIT ŠICHTU</Tlacitko>
             <Tlacitko onClick={onPripojit} vyska={78}>PŘIPOJIT SE</Tlacitko>
-            <Tlacitko druh="tichy" onClick={onHotSeat} vyska={58}>JEN NA JEDNOM TELEFONU</Tlacitko>
+            <Tlacitko druh="tichy" onClick={onHotSeat} vyska={58} male>JEN NA JEDNOM TELEFONU</Tlacitko>
           </>
         ) : (
           <>
-            <Tlacitko druh="hlavni" onClick={onHotSeat} vyska={82}>HRÁT NA JEDNOM TELEFONU</Tlacitko>
+            <Tlacitko druh="hlavni" onClick={onHotSeat} vyska={82} male>HRÁT NA JEDNOM TELEFONU</Tlacitko>
             <Poznamka>Hra po síti zatím není nastavená. Telefon si budete podávat dokola.</Poznamka>
           </>
         )}
@@ -89,7 +88,7 @@ export function Prezdivka({ vychozi, onHotovo, onZpet, onPravidla }: {
           }}
         />
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: 'var(--text-tlum)' }}>
-          <span>Uvidí ji celý stůl.</span>
+          <span>Uvidí ji celý stůl. Stejná se rozliší číslem.</span>
           <span style={{ fontFamily: 'var(--font-nadpis)' }}>{jmeno.length} / 12</span>
         </div>
       </div>
@@ -125,13 +124,20 @@ export function Prezdivka({ vychozi, onHotovo, onZpet, onPravidla }: {
 
 // ---------------------------------------------------------------- šatna
 
-export function Satna({ kod, odkaz, hraci, jsemZakladatel, onZacit, onNastaveni, onNastaveniHry, onPravidla, popisekAkce = 'NASTAVENÍ' }: {
-  kod: string; odkaz?: string | null; hraci: Hrac[]; jsemZakladatel: boolean;
-  onZacit: () => void; onNastaveni: () => void; onNastaveniHry: () => void; onPravidla: () => void;
+export interface HracVSatne { id: string; jmeno: string; zakladatel: boolean; pripojeny: boolean }
+
+export function Satna({
+  kod, odkaz, hraci, jaId, jsemZakladatel, onZacit, onNastaveni, onNastaveniHry, onPravidla, onVyhodit, popisekAkce = 'NASTAVENÍ',
+}: {
+  kod: string; odkaz?: string | null; hraci: HracVSatne[]; jaId: string | null; jsemZakladatel: boolean;
+  onZacit: () => void; onNastaveni?: () => void; onNastaveniHry: () => void; onPravidla: () => void;
+  /** Jen zakladatel a jen online: vyhodit hráče, který tu nemá co dělat. */
+  onVyhodit?: (id: string) => void;
   popisekAkce?: string;
 }) {
-  const dost = hraci.length >= MIN_HRACU;
-  const sestava = dost ? sestavaPro(hraci.length) : null;
+  const pritomni = hraci.filter((h) => h.pripojeny);
+  const dost = pritomni.length >= MIN_HRACU;
+  const sestava = dost ? sestavaPro(pritomni.length) : null;
   const [poslano, setPoslano] = useState(false);
 
   // Kód jde přečíst nahlas, ale odkaz je rychlejší. Systémové sdílení má
@@ -157,7 +163,7 @@ export function Satna({ kod, odkaz, hraci, jsemZakladatel, onZacit, onNastaveni,
             <button type="button" onClick={onPravidla} style={{ border: 'none', background: 'none', padding: '8px 0', fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--text-tlum)' }}>
               PRAVIDLA
             </button>
-            {jsemZakladatel && (
+            {jsemZakladatel && onNastaveni && (
               <button type="button" onClick={onNastaveni} style={{ border: 'none', background: 'none', padding: '8px 0', fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--text-akcent)' }}>
                 {popisekAkce}
               </button>
@@ -192,34 +198,47 @@ export function Satna({ kod, odkaz, hraci, jsemZakladatel, onZacit, onNastaveni,
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <Popisek>SEŠLI SE</Popisek>
           <span style={{ fontFamily: 'var(--font-nadpis)', fontSize: 19, color: 'var(--text-akcent)' }}>
-            {hraci.length} / {MAX_HRACU}
+            {pritomni.length} / {MAX_HRACU}
           </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           {hraci.map((h) => (
             <RadekHrace
-              key={h.id} jmeno={h.jmeno.toUpperCase()} stav="hotovo"
-              vpravo={h.zakladatel ? <Stitek>ZAKLADATEL</Stitek> : <Fajfka />}
+              key={h.id} jmeno={h.jmeno.toUpperCase()}
+              stav={!h.pripojeny ? 'pryc' : h.id === jaId ? 'ty' : 'hotovo'}
+              vpravo={
+                <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {!h.pripojeny ? <Stitek tlumeny>ODPOJEN</Stitek> : h.zakladatel ? <Stitek>ZAKLADATEL</Stitek> : <Fajfka />}
+                  {onVyhodit && jsemZakladatel && h.id !== jaId && (
+                    <button
+                      type="button" onClick={() => onVyhodit(h.id)} aria-label={`Vyhodit ${h.jmeno}`}
+                      style={{ width: 44, height: 44, border: '2px solid var(--ram-tlum)', background: 'transparent', color: 'var(--ocel-400)', fontFamily: 'var(--font-nadpis)', fontSize: 18 }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              }
             />
           ))}
           {!dost && <RadekHrace jmeno="ČEKÁ SE" stav="cekame" />}
         </div>
       </Blok>
 
-      {dost && jeDivokaSestava(hraci.length) && (
+      {dost && jeDivokaSestava(pritomni.length) && (
         <Poznamka varovna>
-          V pěti kazí jen jeden a partie bývá krátká a divoká. Může se stát, že
-          ho najdete hned. Od šesti hráčů se hra pořádně rozjede.
+          Pětka je tréninková partie. Kazí jen jeden, může se stát, že ho najdete
+          hned, a vyvážit to nejde. Od šesti hráčů se hra pořádně rozjede.
         </Poznamka>
       )}
 
       {sestava && (
         <Blok style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 'var(--t-meta-size)', fontWeight: 600, color: 'var(--text)' }}>
-            {hraci.length} hráčů: {sestava.smenyNaKolo === 1 ? 'krátká' : 'plná'} šichta
+            {pritomni.length} hráčů
           </span>
           <span style={{ fontFamily: 'var(--font-nadpis)', fontSize: 16, letterSpacing: '0.06em', color: 'var(--text-akcent)' }}>
-            {sestava.saboteri} SAB · {sestava.limitSicht} KOL
+            {sestava.saboteri} SAB · {sestava.limitSicht} ŠICHT
           </span>
         </Blok>
       )}
@@ -227,7 +246,7 @@ export function Satna({ kod, odkaz, hraci, jsemZakladatel, onZacit, onNastaveni,
       {jsemZakladatel ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
           <Tlacitko druh={dost ? 'hlavni' : 'tichy'} vyska={82} onClick={dost ? onZacit : undefined}>
-            {dost ? 'ZAČÍT ŠICHTU' : `CHYBÍ ${MIN_HRACU - hraci.length}`}
+            {dost ? 'ZAČÍT ŠICHTU' : `CHYBÍ ${MIN_HRACU - pritomni.length}`}
           </Tlacitko>
           <Tlacitko druh="tichy" vyska={56} onClick={onNastaveniHry}>NASTAVENÍ HRY</Tlacitko>
         </div>
@@ -320,6 +339,29 @@ export function Pripojuji({ kod, stav, onZpet }: { kod: string; stav: string; on
         </div>
       </div>
       <Tlacitko vyska={76} onClick={onZpet}>ZPĚT</Tlacitko>
+    </Obrazovka>
+  );
+}
+
+const DUVODY: Record<string, string> = {
+  'hra-bezi': 'Tahle šichta už začala. Do rozehrané partie se nedá přidat, počkej na další.',
+  plno: 'Šichta je plná. Víc než dvanáct lidí se ke stolu nevejde.',
+  jmeno: 'Bez přezdívky to nejde. Vrať se a nějakou si vyber.',
+};
+
+/** Server nás nepustil dovnitř. Neopakuje se to, dokud člověk nezmění, co udělal. */
+export function Nepustili({ kod, duvod, onZpet }: { kod: string; duvod: string; onZpet: () => void }) {
+  return (
+    <Obrazovka tmava>
+      <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 24, textAlign: 'center' }}>
+        <Znacka velikost={64} />
+        <div style={{ fontFamily: 'var(--font-nadpis)', fontSize: 40, letterSpacing: '0.12em', color: 'var(--text-akcent)' }}>{kod}</div>
+        <div style={{ fontFamily: 'var(--font-nadpis)', fontSize: 24, letterSpacing: '0.16em' }}>TUDY NE</div>
+        <div style={{ fontSize: 'var(--t-prose-size)', lineHeight: 1.6, color: 'var(--text)', maxWidth: 280 }}>
+          {DUVODY[duvod] ?? 'Server šichty odmítl připojení.'}
+        </div>
+      </div>
+      <Tlacitko druh="hlavni" vyska={76} onClick={onZpet}>ZPĚT NA ÚVOD</Tlacitko>
     </Obrazovka>
   );
 }
