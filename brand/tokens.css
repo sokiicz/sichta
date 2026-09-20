@@ -1,0 +1,68 @@
+/* Šichta — designové tokeny
+ * Vychází ze směru C2 („tvrdá poloha"): ocel a rez.
+ * Zdroj pravdy je tenhle soubor, ne mockupy. Změna barvy patří sem.
+ */
+
+:root {
+  /* ---------------------------------------------------------- ocel */
+  --ocel-900: #1C1F20;  /* pozadí modálů, nejtmavší plocha */
+  --ocel-800: #24282A;  /* text na rezavé výplni */
+  --ocel-700: #303436;  /* HLAVNÍ POZADÍ APLIKACE */
+  --ocel-600: #3C4143;  /* vyvýšený blok */
+  --ocel-500: #5B5F61;  /* rámy bloků */
+  --ocel-400: #8D908E;  /* silné rámy, text jen od 24 px (kontrast 3,9:1) */
+  --ocel-300: #9C9E9B;  /* tlumený text, nejnižší povolený pro drobné písmo */
+  --ocel-100: #DEDCD6;  /* běžný text */
+  --ocel-50:  #EFEDE7;  /* text v tlačítku, nejvyšší kontrast */
+
+  /* ----------------------------------------------------------- rez */
+  /* Rez je ZNAČKA, ne role. Nikdy neoznačuje sabotéra. */
+  --rez-700: #7A3410;
+  --rez-600: #A84A1A;   /* značka na světlém podkladu */
+  --rez-500: #C4622C;
+  --rez-400: #E88B45;   /* hlavní akcent: nadpis, čas, „TY" */
+
+  /* ------------------------------------------------- stavy šichty */
+  /* Popisují VÝSLEDEK, nikdy člověka. */
+  --patina-400: #7FA37A;  /* šichta prošla */
+  --spal-500:   #B8422E;  /* šichta padla */
+
+  /* ---------------------------------------------------------- text */
+  --text:        var(--ocel-100);
+  --text-tlum:   var(--ocel-300);
+  --text-silny:  var(--ocel-50);
+  --text-akcent: var(--rez-400);
+
+  /* --------------------------------------------------------- plochy */
+  --pozadi:     var(--ocel-700);
+  --blok:       rgba(0, 0, 0, 0.22);
+  --blok-tlac:  rgba(0, 0, 0, 0.28);
+  --ram:        var(--ocel-500);
+  --ram-silny:  var(--ocel-400);
+  --ram-tlum:   #4A4E50;
+
+  /* ------------------------------------------------------ typografie */
+  --font-nadpis: Anton, "Arial Narrow", sans-serif;
+  --font-text:   Karla, system-ui, sans-serif;
+
+  --t-hero-size:   56px;  --t-hero-lh:   0.92;  --t-hero-ls:   0.02em;
+  --t-title-size:  31px;  --t-title-ls:  0.05em;
+  --t-button-size: 31px;  --t-button-ls: 0.22em;
+  --t-timer-size:  28px;
+  --t-name-size:   23px;  --t-name-ls:   0.03em;
+  --t-body-size:   17px;  --t-body-lh:   1.5;
+  --t-prose-size:  15px;  --t-prose-lh:  1.55;
+  --t-meta-size:   13px;  --t-meta-ls:   0.10em;
+  --t-label-size:  11px;  --t-label-ls:  0.26em;
+
+  /* ----------------------------------------------------------- míry */
+  --ram-blok:    3px;   /* běžný blok */
+  --ram-akce:    4px;   /* blok nebo tlačítko nesoucí rozhodnutí */
+  --mezera-xs:    6px;
+  --mezera-s:    12px;
+  --mezera-m:    18px;
+  --mezera-l:    26px;
+  --okraj:       26px;  /* vnější okraj obrazovky */
+  --dotyk-min:   44px;  /* nejmenší dotyková plocha */
+  --tlacitko-h:  86px;  /* hlavní tlačítko volby */
+}
