@@ -11,5 +11,12 @@ class_name = "Mistnost"
 tag = "v1"
 new_sqlite_classes = ["Mistnost"]
 
+# Statickou appku servíruje ten samý worker. Požadavky, které sednou na
+# soubor v dist, se k workeru vůbec nedostanou, zbytek spadne do fetch().
+# Appka i API tak sdílí adresu a CORS vůbec nevzniká.
+[assets]
+directory = "./dist"
+binding = "SOUBORY"
+
 [observability]
 enabled = true

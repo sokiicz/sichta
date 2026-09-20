@@ -8,7 +8,7 @@
 
 ## 1. Co to je
 
-Sociální dedukční hra u stolu. Část party jsou tajní **Sabotéři**. Každé kolo jde vybraná parta na **šichtu** — sabotéři ji můžou tajně pokazit. Pokud šichta selže, sabotéři si tu noc smí někoho odstranit. Pokud projde, parta se dozví jednu pravdivou **šeptandu**. Mezi tím se sedí u stolu a hádá se.
+Sociální dedukční hra u stolu. Část party jsou tajní **Sabotéři**. Každé kolo jde vybraná parta na **šichtu** — sabotéři ji můžou tajně pokazit. Pokud šichta selže, sabotéři si tu noc smí někoho odstranit. Pokud projde, každý dostane vlastní pravdivou **šeptandu**, kterou si ostatní nemůžou ověřit. Mezi tím se sedí u stolu a hádá se.
 
 Aplikace nahrazuje vypravěče: rozdá role, hlídá fáze, ukazuje každému přesně to, co smí vidět, a spočítá výsledky. Nikdo není mimo hru.
 
@@ -46,7 +46,18 @@ Hra má **dva režimy** a hranice je mezi 7 a 8 hráči. Není to kosmetika — 
 
 Krátká, ostrá partie na ~25–30 minut. **Páka není počet sabotérů, ale délka hry.** Při limitu 5 vyhrávají pracanti ~69 % a je to nuda; při limitu 3 to sedí. Málo kol znamená, že si pracanti nemůžou dovolit jedno promarněné vyhoštění — a přesně ten tlak dělá malý stůl zajímavým.
 
-**Čtyři hráči jsou nehratelní.** V celé prohledané mřížce (sabotéři × limit × šeptanda × směny) neexistuje jediná konfigurace v pásmu. Tři pracanti proti jednomu sabotérovi je hádání, ne dedukce. Pět je tvrdá spodní hranice.
+**Čtyři hráči jsou nehratelní.** V celé prohledané mřížce (sabotéři × limit × šeptanda × směny) neexistuje jediná konfigurace v pásmu. Tři pracanti proti jednomu sabotérovi je hádání, ne dedukce.
+
+**Pět hráčů je zvláštní případ a simulace na něj nestačí.** S pěti hráči a jedním sabotérem existuje jen pět možných světů. Bot je nevyřeší jako strop, ale jako rovnici, takže jeho 94 % o skutečném stole nevypovídá nic. Rozhodovalo se proto podle jediného, co se tam měřit dá, a to je odpadávání:
+
+| pětka | kol | živých na konci | jak to končí |
+|---|---|---|---|
+| 2 sabotéři | 2,4 | 1,5 z 5 | 68 % vybitím stolu |
+| 1 sabotér | 2,0 | 2,6 z 5 | vyhoštěním |
+
+Se dvěma se po první vraždě stojí dva na dva a sabotéři ovládnou hlasování. **V pěti proto kazí jen jeden.** Partie je krátká a může skončit tím, že ho najdou hned, ale u stolu zůstane sedět víc lidí. Aplikace to v šatně řekne dopředu. Tohle chce playtest, ne další simulaci.
+
+**Šest je první velikost, kde se hra pořádně rozjede.**
 
 #### Plná šichta — 8 až 12 hráčů
 
@@ -98,8 +109,8 @@ Kolo má 8 fází. Časy jsou pro 8 hráčů.
 |---|------|-----|---------|------------|
 | 1 | **Zadání** | 15 s | v ruce | Aplikace **veřejně** vylosuje partu na šichtu. Kdo je v partě, ví celý stůl — navždy, v historii. |
 | 2 | **Šichta** | 45 s | v ruce | Každý člen party tajně mačká **MAKAT** / **KAZIT**. Pracantovi je tlačítko KAZIT zašedlé — "omylem jsem sabotoval" nesmí existovat. Sabotér vidí **jmenovitě, kdo ze sabotérů jde na šichtu s ním**. |
-| 3 | **Výsledek** | 15 s | dolů | "Šichta prošla" / "Šichta padla — kazili **2**". Počet sabotáží se ukazuje. |
-| 4 | **Šeptanda** | 20 s | dolů | Jen když šichta prošla. Aplikace veřejně vysloví jednu **pravdivou, ale měkkou** informaci (viz 3.5). |
+| 3 | **Výsledek** | 22 s | dolů | "Šichta prošla" / "Šichta padla, kazili **2**". Počet sabotáží se ukazuje. Delší schválně: je to jediný tvrdý důkaz v kole a musí se zapamatovat. |
+| 4 | **Šeptanda** | 20 s | v ruce | Jen když šichta prošla. **Každý dostane vlastní pravdivou větu**, nikdo si cizí neověří (viz 3.5). |
 | 5 | **Rozprava** | 4 min | **DOLŮ** | Mluví se. Aplikace ukazuje jen velký timer a přehled: historie part, výsledků a **kompletní historie hlasování**. |
 | 6 | **Nominace** | 60 s | v ruce | Všichni najednou tajně nominují jednoho hráče. Do rady jdou dva s nejvíc nominacemi. Stíny nenominují. |
 | 7 | **Rada** | 45 s | v ruce | Hlasuje se mezi nominovanými. **Aplikace pak veřejně ukáže, kdo koho volil.** Remíza → nikdo neodchází (a to je tlak). |
@@ -169,19 +180,64 @@ Jeden ze sabotérů je **Předák**. Ostatní sabotéři to vědí, stůl ne.
 
 ### 3.5 Šeptanda
 
-Odměna pracantů za úspěšnou šichtu. **Vždy pravdivá.** Vždy měkká.
+Odměna pracantů za úspěšnou šichtu. **Každý živý hráč dostane vlastní větu.**
 
-- "Aspoň jeden sabotér dnes hlasoval pro vyhoštění **[jméno]**."
-- "Sabotéři se dnes v noci neshodli."
-- "Aspoň jeden sabotér byl dnes v šichtě."
-- "Dnes v šichtě nebyl ani jeden sabotér."
-- "Aspoň jeden sabotér dnes nikoho nenominoval."
-- "Aspoň jeden sabotér nominoval **[jméno]**."
-- "Všichni sabotéři dnes hlasovali stejně."
+Proč každý svou a ne jednu veřejnou: veřejná hláška je oznámení, které si všichni
+přečtou stejně, a stůl o ní nemá co říct. Vlastní věta je naopak **příspěvek do
+rozpravy, který nikdo nemůže ověřit.** Sabotér si tu svou může vymyslet, pracant
+tu svou musí obhájit. Tohle je druhá polovina lhaní ve hře, hned vedle tajné
+volby na šichtě.
 
-Všimni si, co dělají: **otevírají zpátky už proběhlá hlasování a nutí lidi obhajovat, proč volili, jak volili.** To je přesně energie kulatého stolu.
+Rodiny tvrzení, všechny vždy pravdivé:
 
-**Zakázaný typ šeptandy:** cokoliv ve tvaru "mezi A, B, C je právě jeden sabotér". To je zadání logické úlohy, ne pomluva.
+| Rodina | Tvar | Váha |
+|---|---|---|
+| dvojice | "Aspoň jeden z téhle dvojice je pracant: A, B." | 4 |
+| trojice čistá | "Aspoň jeden z téhle trojice je pracant: A, B, C." | 3 |
+| trojice špinavá | "Aspoň jeden z téhle trojice je sabotér: A, B, C." | 4 |
+| čistý | "Určitě není sabotér: A." | 1 |
+| nominace | "V kole N nominoval právě jeden sabotér." | 3 |
+| hlas | "V kole N padl hlas aspoň jednoho sabotéra na: A." | 3 |
+| předák | "V kole N byl předák v partě na šichtě." | 2 |
+| tichý sabotér | "Šichta v kole N prošla, a přesto v ní sabotér byl." | 3 |
+
+Čtyři pravidla, která se nesmí porušit:
+
+1. **Každá věta je pravdivá.** Tvrzení se staví jako data a teprve pak překládá
+   do češtiny. Pravdivost posuzuje samostatná funkce, která čte stav znovu a od
+   nuly, takže testy křížově kontrolují výběr, ne samy sebe.
+2. **Každý dostane právě jednu.** Nikdo nesmí zůstat s prázdnou. "Já nic
+   nedostal" je u stolu okamžitě podezřelé a rozprava se zvrhne na výslech.
+3. **Sabotér dostává věty ze stejného pytle.** Kdyby měly jiný tvar, dalo by se
+   lhaní odhalit podle stylu. Sabotérovi jsou k ničemu, protože role už zná,
+   takže musí lhát nebo mlčet. To je záměr.
+4. **Nic o probíhajícím kole.** Šeptanda běží před nominacemi a radou. Tvrzení
+   o hlasování se smí týkat jen kol, která doběhla. Dřív to bylo špatně a po
+   první šichtě to hlásilo "aspoň jeden sabotér nenominoval", což byla pravda
+   jen proto, že ještě nikdo nenominoval.
+
+**Zakázaný typ šeptandy:** cokoliv ve tvaru "mezi A, B, C je právě jeden
+sabotér". To je zadání logické úlohy, ne pomluva.
+
+**Dvě shodné věty jsou v pořádku.** Když dva lidi dostanou totéž, je to
+potvrzení, ne chyba. Zároveň je to past na toho, kdo si větu vymýšlí.
+
+**Strop tří pravd.** Za prošlou šichtu vzniknou nejvýš **tři různé věty**,
+které se rozdají mezi všechny živé hráče. Kdyby měl každý vlastní nezávislou
+pravdu, roste informace s počtem lidí, zatímco počet sabotérů ne, a u dvanácti
+hráčů pak vyhrávají pracanti tři partie ze čtyř (změřeno: 62 % proti 26 %).
+Tři pravdy drží informaci konstantní bez ohledu na velikost stolu.
+
+Vedlejší efekt je výhoda, ne kompromis: u většího stolu **dostane několik lidí
+tutéž větu**. Dva lidi se stejnou větou se navzájem potvrzují a ten, kdo si
+větu vymýšlí, hraje ruletu, jestli netrefí cizí.
+
+### 3.5b Zkrácení rozpravy
+
+Odpočet rozpravy je strop, ne norma. **Nadpoloviční většina živých ho může
+utnout.** Kdo už chce dál, je veřejně vidět: je to nátlak sám o sobě a zároveň
+informace do hry, protože kdo pořád spěchá pryč od rozpravy, si jí možná moc
+nepřeje. Odvolat to jde, dokud většina nepadne.
 
 ### 3.6 Stíny (vyřazení hráči)
 

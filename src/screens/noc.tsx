@@ -66,7 +66,7 @@ export function Odmeny({ dostupne, vybrana, onVybrat, onPotvrdit }: {
 // ---------------------------------------------------------------- oběť
 
 export function Obet({ cile, vybrany, sekundy, jsemPredak, odmena, onVybrat, onPotvrdit }: {
-  cile: (Kdo & { spolusaboter?: boolean })[]; vybrany: string | null; sekundy: number;
+  cile: (Kdo & { spolusaboter?: boolean })[]; vybrany: string | null; sekundy: number | null;
   jsemPredak: boolean; odmena: Odmena; onVybrat: (id: string) => void; onPotvrdit: () => void;
 }) {
   const cil = cile.find((c) => c.id === vybrany);
@@ -107,7 +107,7 @@ export function Obet({ cile, vybrany, sekundy, jsemPredak, odmena, onVybrat, onP
 // ---------------------------------------------------------------- podezřelý
 
 export function Podezrely({ cile, vybrany, sekundy, onVybrat, onPotvrdit }: {
-  cile: Kdo[]; vybrany: string | null; sekundy: number;
+  cile: Kdo[]; vybrany: string | null; sekundy: number | null;
   onVybrat: (id: string) => void; onPotvrdit: () => void;
 }) {
   const cil = cile.find((c) => c.id === vybrany);

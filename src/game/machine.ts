@@ -1,7 +1,7 @@
 import type { Akce, Faze, Hrac, HracId, Kolo, Odmena, Role, Smenaz, Stav, Tym } from './types';
 import { MAX_HRACU, MIN_HRACU, sestavaPro, velikostParty } from './rules';
 import { rng, vyber, type Rng } from './random';
-import { vybratSeptandu } from './septanda';
+import { rozdatSeptandu } from './septanda';
 
 export function prazdnyStav(): Stav {
   return {
@@ -81,7 +81,8 @@ export function noveKolo(cislo: number): Kolo {
   return {
     cislo,
     smeny: [],
-    septanda: null,
+    septanda: {},
+    chtejiDal: [],
     nominace: {},
     kandidati: [],
     hlasy: {},
@@ -127,14 +128,21 @@ function poVysledku(s: Stav, r: Rng): Stav {
   const neceProslo = k.smeny.some((sm) => sm.padla === false);
   if (!neceProslo) return { ...s, faze: 'rozprava' };
 
-  const sm = posledniSmena(k)!;
-  const vysledek = vybratSeptandu(
-    { role: s.role, jmeno: (id) => jmeno(s, id), kolo: k, posledniSmena: sm, zivi: zivi(s).map((h) => h.id) },
+  const septanda = rozdatSeptandu(
+    {
+      role: s.role,
+      jmeno: (id) => jmeno(s, id),
+      predak: s.predak,
+      zivi: zivi(s).map((h) => h.id),
+      // Jen dokončená kola: tohle kolo ještě nemá nominace ani hlasy.
+      historie: s.historie,
+      smeny: k.smeny,
+      kolo: k.cislo,
+    },
     r,
-    s.historie.map((h) => h.septanda ?? '').filter(Boolean),
   );
-  if (!vysledek) return { ...s, faze: 'rozprava' };
-  return { ...s, faze: 'septanda', aktualni: { ...k, septanda: vysledek.text } };
+  if (Object.keys(septanda).length === 0) return { ...s, faze: 'rozprava' };
+  return { ...s, faze: 'septanda', aktualni: { ...k, septanda } };
 }
 
 function spocitatKandidaty(s: Stav): HracId[] {
@@ -183,6 +191,11 @@ function zacitDalsiKolo(s: Stav, r: Rng): Stav {
   const k = noveKolo(dalsiCislo);
   const sStim: Stav = { ...mezi, aktualni: k };
   return { ...sStim, faze: 'predel', aktualni: { ...k, smeny: [rozdatPartu(sStim, r)] } };
+}
+
+/** Kolik živých musí chtít dál, aby se rozprava utnula. Nadpoloviční většina. */
+export function potrebaProSkok(s: Stav): number {
+  return Math.floor(zivi(s).length / 2) + 1;
 }
 
 const DALSI: Partial<Record<Faze, Faze>> = {
@@ -329,6 +342,25 @@ export function reducer(s: Stav, a: Akce, seed = 1): Stav {
 
     case 'HRAT_BEZ_NEJ':
       return { ...s, pauza: null };
+
+    /**
+     * Hlasování o zkrácení rozpravy. Tři minuty se často nevypovídají
+     * a čekat na odpočet je otrava. Většina živých to utne.
+     *
+     * Kdo chce dál, je vidět, a to je záměr: tlak, ať to někdo rozsekne.
+     * Odvolat to jde, dokud většina nepadne.
+     */
+    case 'CHCI_DAL': {
+      if (s.faze !== 'rozprava' || !s.aktualni) return s;
+      if (!hrac(s, a.id)?.zivy) return s;
+      const uz = s.aktualni.chtejiDal.includes(a.id);
+      const chtejiDal = uz
+        ? s.aktualni.chtejiDal.filter((x) => x !== a.id)
+        : [...s.aktualni.chtejiDal, a.id];
+      const sNovymi: Stav = { ...s, aktualni: { ...s.aktualni, chtejiDal } };
+      if (chtejiDal.length < potrebaProSkok(sNovymi)) return sNovymi;
+      return { ...sNovymi, faze: 'nominace' };
+    }
 
     case 'DALSI_FAZE': {
       if (s.pauza) return s;

@@ -15,6 +15,8 @@ import type { Akce, HracId, Stav } from '../src/game/types';
 
 export interface Env {
   MISTNOST: DurableObjectNamespace;
+  /** Postavená appka. Wrangler ji bere z ./dist podle wrangler.toml. */
+  SOUBORY: { fetch: (req: Request) => Promise<Response> };
 }
 
 /** Abeceda je v src/game/kod.ts, aby se nerozešla s klávesnicí v aplikaci. */
@@ -65,7 +67,12 @@ export default {
       return env.MISTNOST.get(id).fetch(req);
     }
 
-    return new Response('Tady nic není.', { status: 404, headers: CORS });
+    // Co není API, je appka. Neznámá cesta dostane index.html, protože
+    // hra je jednostránková a adresu si přepisuje sama.
+    if (url.pathname.startsWith('/api/')) {
+      return new Response('Tady nic není.', { status: 404, headers: CORS });
+    }
+    return env.SOUBORY.fetch(new Request(new URL('/index.html', url), req));
   },
 };
 

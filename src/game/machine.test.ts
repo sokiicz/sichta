@@ -321,3 +321,49 @@ describe('připravenost před startem', () => {
     expect(s.pripraveni).toEqual([]);
   });
 });
+
+describe('zkrácení rozpravy hlasováním', () => {
+  const doRozpravy = (pocet: number): Stav => {
+    let s = prazdnyStav();
+    for (let i = 0; i < pocet; i++) {
+      s = posli(s, { typ: 'PRIDAT_HRACE', id: `h${i}`, jmeno: `H${i}` });
+    }
+    s = posli(s, { typ: 'ZACIT' });
+    for (const h of s.hraci) s = posli(s, { typ: 'PRIPRAVEN', id: h.id });
+    for (let i = 0; i < 30 && s.faze !== 'rozprava'; i++) s = dal(s);
+    return s;
+  };
+
+  it('menšina rozpravu neutne', () => {
+    const s = doRozpravy(7);
+    expect(s.faze).toBe('rozprava');
+    let x = s;
+    for (const h of zivi(s).slice(0, 3)) x = posli(x, { typ: 'CHCI_DAL', id: h.id });
+    expect(x.aktualni?.chtejiDal).toHaveLength(3);
+    expect(x.faze).toBe('rozprava');
+  });
+
+  it('nadpoloviční většina živých ji utne', () => {
+    const s = doRozpravy(7);
+    let x = s;
+    for (const h of zivi(s).slice(0, 4)) x = posli(x, { typ: 'CHCI_DAL', id: h.id });
+    expect(x.faze).toBe('nominace');
+  });
+
+  it('rozmyslet si to jde, dokud většina nepadne', () => {
+    const s = doRozpravy(7);
+    let x = posli(s, { typ: 'CHCI_DAL', id: 'h0' });
+    expect(x.aktualni?.chtejiDal).toContain('h0');
+    x = posli(x, { typ: 'CHCI_DAL', id: 'h0' });
+    expect(x.aktualni?.chtejiDal).not.toContain('h0');
+    expect(x.faze).toBe('rozprava');
+  });
+
+  it('mimo rozpravu se hlas nezapíše', () => {
+    const s = doRozpravy(7);
+    const jinde = posli(s, { typ: 'DALSI_FAZE' });
+    expect(jinde.faze).not.toBe('rozprava');
+    const x = posli(jinde, { typ: 'CHCI_DAL', id: 'h0' });
+    expect(x.aktualni?.chtejiDal ?? []).toHaveLength(0);
+  });
+});

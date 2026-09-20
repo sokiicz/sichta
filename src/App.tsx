@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ReactElement } from 'react';
 import './ui/tokens.css';
 
-import { Obrazovka, Popisek, Tlacitko, Znacka } from './ui/primitives';
+import { Obrazovka, Popisek, PredejDrzitele, Tlacitko, Znacka } from './ui/primitives';
 import { KodSichty, Prezdivka, Pripojuji, Satna, Uvod } from './screens/lobby';
 import { CekaSe, TvaRole } from './screens/role';
 import { Predel, Septanda, Vysledek, Volba as VolbaSichty, Zadani } from './screens/sichta';
@@ -230,239 +231,267 @@ export default function App() {
   const dal = jeOnline ? () => {} : hotseatDal;
   const preskocit = jeOnline ? undefined : hotseatDal;
   const zbyvaSicht = Math.max(0, p.limitSicht - p.kolo);
+  // Na jednom telefonu fázi nehlídají hodiny, protože se zařízení podává.
+  // Zamrzlý odpočet vypadá jako rozbitá appka, tak se radši nekreslí vůbec.
+  const cas: number | null = jeOnline ? zbyva : null;
+  // Obrazovky stolu nesmí nikoho vypíchnout jako "ty". Na jednom telefonu je
+  // totiž "ty" jen náhodný první hráč, kterému patří pohled.
+  const mojeJmeno = jeOnline ? jm(ja) : null;
   const jaHrac = p.hraci.find((h) => h.id === ja);
   const zivi = p.hraci.filter((h) => h.zivy);
   const smena = p.stul.smena ?? 'odpoledni';
 
-  switch (p.faze) {
-    case 'rozdani':
-      return (
-        <TvaRole
-          role={p.ja.role} spoluSaboteri={p.ja.spoluSaboteri} jsemPredak={p.ja.jsemPredak}
-          pocetHracu={p.hraci.length} pocetSaboteru={p.pocetSaboteru}
-          pripraven={false}
-          onPripraven={jeOnline ? () => poslat({ typ: 'PRIPRAVEN', id: ja }) : hotovo}
-        />
-      );
-
-    case 'predel':
-      return <Predel kolo={p.kolo} smena={smena} zbyvaSicht={zbyvaSicht} onDal={dal} />;
-
-    case 'zadani':
-      return (
-        <Zadani
-          kolo={p.kolo} smena={smena}
-          parta={p.stul.parta.map(jm)}
-          zustavaji={zivi.filter((h) => !p.stul.parta.includes(h.id)).map((h) => h.jmeno)}
-          jsemVParte={p.stul.parta.includes(ja)}
-          podil={podil} onPreskocit={preskocit}
-        />
-      );
-
-    case 'sichta':
-      if (!p.stul.parta.includes(ja)) {
+  const obrazovka = ((): ReactElement | null => {
+    switch (p.faze) {
+      case 'rozdani':
         return (
-          <CekaSe
-            hraci={p.hraci.filter((h) => p.stul.parta.includes(h.id))}
-            hotovi={p.stul.odevzdali} podil={podil} onPreskocit={preskocit}
-            popis="Parta je na šichtě. Koukejte se po sobě, ne do telefonu."
+          <TvaRole
+            role={p.ja.role} spoluSaboteri={p.ja.spoluSaboteri} jsemPredak={p.ja.jsemPredak}
+            pocetHracu={p.hraci.length} pocetSaboteru={p.pocetSaboteru}
+            pripraven={false}
+            onPripraven={jeOnline ? () => poslat({ typ: 'PRIPRAVEN', id: ja }) : hotovo}
           />
         );
-      }
-      return (
-        <VolbaSichty
-          kolo={p.kolo} smena={smena} parta={p.stul.parta.map(jm)} mojeJmeno={jm(ja)}
-          sekundy={zbyva}
-          onVolba={(v) => { poslat({ typ: 'VOLBA_SICHTY', id: ja, volba: v }); hotovo(); }}
-        />
-      );
 
-    case 'vysledek':
-      return (
-        <Vysledek
-          kolo={p.kolo} smena={smena} padla={p.stul.padla ?? false} sabotazi={p.stul.sabotazi ?? 0}
-          parta={p.stul.parta.map(jm)} mojeJmeno={jm(ja)}
-          podil={podil} onPreskocit={preskocit}
-        />
-      );
+      case 'predel':
+        return <Predel kolo={p.kolo} smena={smena} zbyvaSicht={zbyvaSicht} onDal={dal} />;
 
-    case 'septanda':
-      return <Septanda text={p.stul.septanda ?? ''} podil={podil} onPreskocit={preskocit} />;
-
-    case 'rozprava':
-      return <Rozprava sekundy={zbyva} celkem={delka} onDal={dal} />;
-
-    case 'nominace':
-      return (
-        <Nominace
-          kdo={p.hraci.map((h) => ({ id: h.id, jmeno: h.jmeno, zivy: h.zivy }))}
-          jaId={ja} vybrany={vyber ?? p.ja.nominoval} sekundy={zbyva}
-          onVybrat={setVyber}
-          onPotvrdit={() => {
-            const c = vyber ?? p.ja.nominoval;
-            if (c) poslat({ typ: 'NOMINOVAT', id: ja, cil: c });
-            hotovo();
-          }}
-        />
-      );
-
-    case 'kandidati':
-      return (
-        <Kandidati
-          kandidati={p.stul.kandidati.map((id) => ({ jmeno: jm(id), hlasu: 0 }))}
-          nepostupuji={[]}
-          podil={podil} onPreskocit={preskocit}
-        />
-      );
-
-    case 'posledni_slovo':
-      return (
-        <PosledniSlovo
-          mluvi={jm(p.stul.kandidati[0])}
-          potom={p.stul.kandidati[1] ? jm(p.stul.kandidati[1]) : null}
-          sekundy={zbyva} podil={podil} onPreskocit={preskocit}
-        />
-      );
-
-    case 'rada':
-      return (
-        <Rada
-          kandidati={p.stul.kandidati.map((id) => ({ id, jmeno: jm(id), zivy: true }))}
-          vybrany={vyber ?? p.ja.hlasoval} sekundy={zbyva}
-          jsemStin={!(jaHrac?.zivy ?? true)} hlasUtracen={jaHrac?.hlasStinuUtracen ?? false}
-          onVybrat={setVyber}
-          onPotvrdit={() => {
-            const c = vyber ?? p.ja.hlasoval;
-            if (c) poslat({ typ: 'HLASOVAT', id: ja, cil: c });
-            hotovo();
-          }}
-        />
-      );
-
-    case 'hlasy': {
-      const hlasy = p.stul.hlasy.map((h) => ({ kdo: jm(h.kdo), komu: jm(h.komu), stin: h.stin }));
-      const pocty = new Map<string, number>();
-      for (const h of hlasy.slice(0, odkryto)) pocty.set(h.komu, (pocty.get(h.komu) ?? 0) + 1);
-      const max = Math.max(0, ...pocty.values());
-      return (
-        <Hlasy
-          kandidati={p.stul.kandidati.map((id) => ({
-            jmeno: jm(id), hlasu: pocty.get(jm(id)) ?? 0,
-            vede: (pocty.get(jm(id)) ?? 0) === max && max > 0,
-          }))}
-          hlasy={hlasy} odkryto={odkryto} tma={p.stul.tmaNadHlasovanim}
-          podil={podil} onPreskocit={preskocit}
-        />
-      );
-    }
-
-    case 'vyhosteni':
-      return (
-        <Vyhosteni
-          kolo={p.kolo}
-          kdo={p.stul.vyhosteny ? jm(p.stul.vyhosteny) : null}
-          role={p.stul.roleVyhosteneho}
-          zbyvaSaboteru={p.pocetSaboteru}
-          zivych={zivi.length}
-          podil={podil} onPreskocit={preskocit}
-        />
-      );
-
-    case 'noc': {
-      if (p.ja.jsemPredak && !p.stul.odmena && p.ja.odmeny.length > 0) {
+      case 'zadani':
         return (
-          <Odmeny
-            dostupne={p.ja.odmeny} vybrana={odmena} onVybrat={setOdmena}
-            onPotvrdit={() => {
-              if (!odmena) return;
-              poslat({ typ: 'VYBRAT_ODMENU', odmena });
-              if (odmena !== 'vrazda') hotovo();
-            }}
+          <Zadani
+            kolo={p.kolo} smena={smena}
+            parta={p.stul.parta.map(jm)}
+            zustavaji={zivi.filter((h) => !p.stul.parta.includes(h.id)).map((h) => h.jmeno)}
+            jsemVParte={jeOnline && p.stul.parta.includes(ja)}
+            podil={podil} onPreskocit={preskocit}
           />
         );
-      }
 
-      if (p.ja.role === 'saboter' && p.stul.odmena === 'vrazda') {
-        const spolu = new Set(p.ja.spoluSaboteri.map((s) => s.id));
+      case 'sichta':
+        if (!p.stul.parta.includes(ja)) {
+          return (
+            <CekaSe
+              hraci={p.hraci.filter((h) => p.stul.parta.includes(h.id))}
+              hotovi={p.stul.odevzdali} podil={podil} onPreskocit={preskocit}
+              popis="Parta je na šichtě. Koukejte se po sobě, ne do telefonu."
+            />
+          );
+        }
         return (
-          <Obet
-            cile={zivi.map((h) => ({ id: h.id, jmeno: h.jmeno, zivy: true, spolusaboter: spolu.has(h.id) || h.id === ja }))}
-            vybrany={vyber} sekundy={zbyva} jsemPredak={p.ja.jsemPredak} odmena="vrazda"
+          <VolbaSichty
+            kolo={p.kolo} smena={smena} parta={p.stul.parta.map(jm)} mojeJmeno={jm(ja)}
+            sekundy={cas}
+            odevzdano={p.ja.volbaSichty}
+            onVolba={(v) => poslat({ typ: 'VOLBA_SICHTY', id: ja, volba: v })}
+            onHotovo={hotovo}
+          />
+        );
+
+      case 'vysledek':
+        return (
+          <Vysledek
+            kolo={p.kolo} smena={smena} padla={p.stul.padla ?? false} sabotazi={p.stul.sabotazi ?? 0}
+            parta={p.stul.parta.map(jm)} mojeJmeno={mojeJmeno}
+            podil={podil} onPreskocit={preskocit}
+          />
+        );
+
+      case 'septanda':
+        return <Septanda text={p.ja.septanda ?? ''} onHotovo={jeOnline ? () => {} : hotovo} />;
+
+      case 'rozprava':
+        return (
+          <Rozprava
+            sekundy={zbyva} celkem={delka}
+            hlasovani={jeOnline ? {
+              kolik: p.stul.chtejiDal.length,
+              potreba: p.stul.potrebaProSkok,
+              jaChci: p.stul.chtejiDal.includes(ja),
+            } : null}
+            onDal={dal}
+            onChciDal={() => poslat({ typ: 'CHCI_DAL', id: ja })}
+          />
+        );
+
+      case 'nominace':
+        return (
+          <Nominace
+            kdo={p.hraci.map((h) => ({ id: h.id, jmeno: h.jmeno, zivy: h.zivy }))}
+            jaId={ja} vybrany={vyber ?? p.ja.nominoval} sekundy={cas}
             onVybrat={setVyber}
             onPotvrdit={() => {
-              if (!vyber) return;
-              poslat(p.ja.jsemPredak ? { typ: 'PREDAK_ROZHODL', cil: vyber } : { typ: 'NAVRHNOUT_OBET', id: ja, cil: vyber });
+              const c = vyber ?? p.ja.nominoval;
+              if (c) poslat({ typ: 'NOMINOVAT', id: ja, cil: c });
               hotovo();
             }}
           />
         );
-      }
 
-      return (
-        <Podezrely
-          cile={zivi.filter((h) => h.id !== ja).map((h) => ({ id: h.id, jmeno: h.jmeno, zivy: true }))}
-          vybrany={vyber} sekundy={zbyva} onVybrat={setVyber}
-          onPotvrdit={() => { if (vyber) poslat({ typ: 'ZAPSAT_PODEZRELEHO', id: ja, cil: vyber }); hotovo(); }}
-        />
-      );
-    }
-
-    case 'rano':
-      return (
-        <Rano
-          kolo={Math.max(1, p.kolo - 1)}
-          obet={p.stul.obet ? jm(p.stul.obet) : null}
-          zivych={zivi.length} stinu={p.hraci.length - zivi.length}
-          zbyvaSicht={zbyvaSicht} podil={podil} onPreskocit={preskocit}
-        />
-      );
-
-    case 'konec': {
-      const kn = p.konec;
-      if (!kn) return null;
-
-      if (krok === 'prubeh') {
-        const kola: KoloPrehled[] = kn.kola.map((x) => ({
-          cislo: x.cislo, padla: x.padla, sabotazi: x.sabotazi,
-          parta: x.parta.map((id) => ({ jmeno: jm(id), saboter: kn.role[id] === 'saboter' })),
-          rada: x.vyhosteny ? jm(x.vyhosteny) : null,
-          noc: x.obet ? jm(x.obet) : null,
-        }));
-        return <Prehled kola={kola} poznamka={null} onZpet={() => setKrok('odhaleni')} />;
-      }
-
-      if (krok === 'odhaleni') {
-        const odhaleni: Odhaleny[] = p.hraci.map((h) => {
-          const rk = kn.kola.find((x) => x.vyhosteny === h.id);
-          const nk = kn.kola.find((x) => x.obet === h.id);
-          return {
-            jmeno: h.jmeno,
-            role: kn.role[h.id] ?? 'pracant',
-            predak: kn.predak === h.id,
-            odchod: rk ? `rada ${rk.cislo}` : nk ? `noc ${nk.cislo}` : null,
-          };
-        }).sort((a, b) => (a.role === b.role ? 0 : a.role === 'saboter' ? -1 : 1));
-
+      case 'kandidati':
         return (
-          <Odhaleni
-            hraci={odhaleni}
-            cuch={kn.cuch ? { jmeno: jm(kn.cuch.id), popis: `${kn.cuch.trefil} ze ${kn.cuch.z} správně.` } : null}
-            onPrubeh={() => setKrok('prubeh')}
-            onZnovu={() => window.location.reload()}
+          <Kandidati
+            kandidati={p.stul.kandidati.map((id) => ({ jmeno: jm(id), hlasu: 0 }))}
+            nepostupuji={[]}
+            podil={podil} onPreskocit={preskocit}
+          />
+        );
+
+      case 'posledni_slovo':
+        return (
+          <PosledniSlovo
+            mluvi={jm(p.stul.kandidati[0])}
+            potom={p.stul.kandidati[1] ? jm(p.stul.kandidati[1]) : null}
+            sekundy={zbyva} podil={podil} onPreskocit={preskocit}
+          />
+        );
+
+      case 'rada':
+        return (
+          <Rada
+            kandidati={p.stul.kandidati.map((id) => ({ id, jmeno: jm(id), zivy: true }))}
+            vybrany={vyber ?? p.ja.hlasoval} sekundy={cas}
+            jsemStin={!(jaHrac?.zivy ?? true)} hlasUtracen={jaHrac?.hlasStinuUtracen ?? false}
+            onVybrat={setVyber}
+            onPotvrdit={() => {
+              const c = vyber ?? p.ja.hlasoval;
+              if (c) poslat({ typ: 'HLASOVAT', id: ja, cil: c });
+              hotovo();
+            }}
+          />
+        );
+
+      case 'hlasy': {
+        const hlasy = p.stul.hlasy.map((h) => ({ kdo: jm(h.kdo), komu: jm(h.komu), stin: h.stin }));
+        const pocty = new Map<string, number>();
+        for (const h of hlasy.slice(0, odkryto)) pocty.set(h.komu, (pocty.get(h.komu) ?? 0) + 1);
+        const max = Math.max(0, ...pocty.values());
+        return (
+          <Hlasy
+            kandidati={p.stul.kandidati.map((id) => ({
+              jmeno: jm(id), hlasu: pocty.get(jm(id)) ?? 0,
+              vede: (pocty.get(jm(id)) ?? 0) === max && max > 0,
+            }))}
+            hlasy={hlasy} odkryto={odkryto} tma={p.stul.tmaNadHlasovanim}
+            podil={podil} onPreskocit={preskocit}
           />
         );
       }
 
-      return (
-        <Konec
-          vitez={p.vitez ?? 'saboteri'} duvod={p.duvodKonce ?? ''}
-          sicht={kn.kola.length} padlo={kn.kola.filter((x) => x.padla).length} cas="—"
-          onOdhalit={() => setKrok('odhaleni')}
-        />
-      );
-    }
+      case 'vyhosteni':
+        return (
+          <Vyhosteni
+            kolo={p.kolo}
+            kdo={p.stul.vyhosteny ? jm(p.stul.vyhosteny) : null}
+            role={p.stul.roleVyhosteneho}
+            zbyvaSaboteru={p.pocetSaboteru}
+            zivych={zivi.length}
+            podil={podil} onPreskocit={preskocit}
+          />
+        );
 
-    default:
-      return <CekaSe hraci={p.hraci} hotovi={p.stul.odevzdali} podil={podil} popis="Moment." />;
-  }
+      case 'noc': {
+        if (p.ja.jsemPredak && !p.stul.odmena && p.ja.odmeny.length > 0) {
+          return (
+            <Odmeny
+              dostupne={p.ja.odmeny} vybrana={odmena} onVybrat={setOdmena}
+              onPotvrdit={() => {
+                if (!odmena) return;
+                poslat({ typ: 'VYBRAT_ODMENU', odmena });
+                if (odmena !== 'vrazda') hotovo();
+              }}
+            />
+          );
+        }
+
+        if (p.ja.role === 'saboter' && p.stul.odmena === 'vrazda') {
+          const spolu = new Set(p.ja.spoluSaboteri.map((s) => s.id));
+          return (
+            <Obet
+              cile={zivi.map((h) => ({ id: h.id, jmeno: h.jmeno, zivy: true, spolusaboter: spolu.has(h.id) || h.id === ja }))}
+              vybrany={vyber} sekundy={cas} jsemPredak={p.ja.jsemPredak} odmena="vrazda"
+              onVybrat={setVyber}
+              onPotvrdit={() => {
+                if (!vyber) return;
+                poslat(p.ja.jsemPredak ? { typ: 'PREDAK_ROZHODL', cil: vyber } : { typ: 'NAVRHNOUT_OBET', id: ja, cil: vyber });
+                hotovo();
+              }}
+            />
+          );
+        }
+
+        return (
+          <Podezrely
+            cile={zivi.filter((h) => h.id !== ja).map((h) => ({ id: h.id, jmeno: h.jmeno, zivy: true }))}
+            vybrany={vyber} sekundy={cas} onVybrat={setVyber}
+            onPotvrdit={() => { if (vyber) poslat({ typ: 'ZAPSAT_PODEZRELEHO', id: ja, cil: vyber }); hotovo(); }}
+          />
+        );
+      }
+
+      case 'rano':
+        return (
+          <Rano
+            kolo={Math.max(1, p.kolo - 1)}
+            obet={p.stul.obet ? jm(p.stul.obet) : null}
+            zivych={zivi.length} stinu={p.hraci.length - zivi.length}
+            zbyvaSicht={zbyvaSicht} podil={podil} onPreskocit={preskocit}
+          />
+        );
+
+      case 'konec': {
+        const kn = p.konec;
+        if (!kn) return null;
+
+        if (krok === 'prubeh') {
+          const kola: KoloPrehled[] = kn.kola.map((x) => ({
+            cislo: x.cislo, padla: x.padla, sabotazi: x.sabotazi,
+            parta: x.parta.map((id) => ({ jmeno: jm(id), saboter: kn.role[id] === 'saboter' })),
+            rada: x.vyhosteny ? jm(x.vyhosteny) : null,
+            noc: x.obet ? jm(x.obet) : null,
+          }));
+          return <Prehled kola={kola} poznamka={null} onZpet={() => setKrok('odhaleni')} />;
+        }
+
+        if (krok === 'odhaleni') {
+          const odhaleni: Odhaleny[] = p.hraci.map((h) => {
+            const rk = kn.kola.find((x) => x.vyhosteny === h.id);
+            const nk = kn.kola.find((x) => x.obet === h.id);
+            return {
+              jmeno: h.jmeno,
+              role: kn.role[h.id] ?? 'pracant',
+              predak: kn.predak === h.id,
+              odchod: rk ? `rada ${rk.cislo}` : nk ? `noc ${nk.cislo}` : null,
+            };
+          }).sort((a, b) => (a.role === b.role ? 0 : a.role === 'saboter' ? -1 : 1));
+
+          return (
+            <Odhaleni
+              hraci={odhaleni}
+              cuch={kn.cuch ? { jmeno: jm(kn.cuch.id), popis: `${kn.cuch.trefil} ze ${kn.cuch.z} správně.` } : null}
+              onPrubeh={() => setKrok('prubeh')}
+              onZnovu={() => window.location.reload()}
+            />
+          );
+        }
+
+        return (
+          <Konec
+            vitez={p.vitez ?? 'saboteri'} duvod={p.duvodKonce ?? ''}
+            sicht={kn.kola.length} padlo={kn.kola.filter((x) => x.padla).length}
+            stinu={p.hraci.length - zivi.length}
+            onOdhalit={() => setKrok('odhaleni')}
+          />
+        );
+      }
+
+      default:
+        return <CekaSe hraci={p.hraci} hotovi={p.stul.odevzdali} podil={podil} popis="Moment." />;
+    }
+  })();
+
+  return (
+    <PredejDrzitele jmeno={jeOnline ? null : naRade ? jm(naRade) : null}>
+      {obrazovka}
+    </PredejDrzitele>
+  );
 }

@@ -132,7 +132,9 @@ function simulateGame(cfg) {
     // Dopolední padlá šichta dá jen výhodu, odpolední odemyká vraždu.
     let teamSet = null, k = 0, failed = false, anyPassed = false;
     for (let sh = 0; sh < shiftsPerRound; sh++) {
-      const teamSize = Math.max(1, Math.min(Math.ceil(aliveArr.length / 2), aliveArr.length - 1));
+      const teamSize = cfg.teamBonus
+        ? Math.max(1, Math.min(Math.ceil(aliveArr.length / 2) + cfg.teamBonus, aliveArr.length - 1))
+        : Math.max(1, Math.min(Math.ceil(aliveArr.length / 2), aliveArr.length - 1));
       const team = sample(aliveArr, teamSize);
       const tSet = new Set(team);
       const isLast = sh === shiftsPerRound - 1;
@@ -221,24 +223,42 @@ function simulateGame(cfg) {
     }
 
     // ---- 6. šeptanda (jen při úspěšné šichtě)
+    //
+    // Od přepisu na individuální šeptandu dostává větu KAŽDÝ živý hráč, ne
+    // stůl jednu společnou. Bot je strop, ne odhad, takže se modeluje
+    // nejhorší možný případ pro sabotéry: pracanti si své věty poctivě
+    // vymění a sabotérské lži bezchybně zahodí. Skutečný stůl tohle nikdy
+    // nedokáže, takže reálná úspěšnost pracantů bude nižší než tady.
     if (whispers && anyPassed) {
-      const livingSabs = [...saboteurs].filter((p) => votes.has(p));
-      const options = [];
-      if (k === 0) options.push((H) => [...H].filter((p) => teamSet.has(p)).length === 0);
-      else options.push((H) => [...H].filter((p) => teamSet.has(p)).length >= 1);
-      if (livingSabs.length) {
-        const target = votes.get(pick(livingSabs));
-        if (target != null) options.push((H) => [...H].some((p) => votes.get(p) === target));
-        const sabVotes = livingSabs.map((p) => votes.get(p));
-        if (sabVotes.length > 1 && sabVotes.every((v) => v === sabVotes[0])) {
-          options.push((H) => {
-            const vs = [...H].map((p) => votes.get(p)).filter((v) => v != null);
-            return vs.length > 1 && vs.every((v) => v === vs[0]);
-          });
+      const alivePrac = [...alive].filter((p) => !isSab(p));
+      const aliveSabs = [...alive].filter(isSab);
+
+      const kolik = cfg.whisperFacts ?? alivePrac.length;
+      for (let w = 0; w < Math.min(kolik, alivePrac.length); w++) {
+        const options = [];
+
+        // dvojice, ve které je aspoň jeden pracant (váha 4 v septanda.ts)
+        if (alivePrac.length >= 1 && alive.size >= 2) {
+          const jisty = pick(alivePrac);
+          const druhy = pick([...alive].filter((p) => p !== jisty));
+          if (druhy != null) options.push(((a, b) => (H) => !(H.has(a) && H.has(b)))(jisty, druhy));
         }
+        // trojice, ve které je aspoň jeden sabotér (váha 4)
+        if (aliveSabs.length && alive.size >= 3) {
+          const jisty = pick(aliveSabs);
+          const zbytek = sample([...alive].filter((p) => p !== jisty), 2);
+          const trojice = [jisty, ...zbytek];
+          options.push(((t) => (H) => t.some((p) => H.has(p)))(trojice));
+        }
+        // jeden jistý pracant (váha 1, nejsilnější a proto nejvzácnější)
+        if (alivePrac.length && Math.random() < 1 / 12) {
+          options.push(((a) => (H) => !H.has(a))(pick(alivePrac)));
+        }
+
+        if (options.length) constrain(pick(options));
       }
-      if (options.length) constrain(pick(options));
     }
+
 
     if ((end = checkEnd())) break;
 

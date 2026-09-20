@@ -49,7 +49,8 @@ export interface Smenaz {
 export interface Kolo {
   cislo: number;
   smeny: Smenaz[];
-  septanda: string | null;
+  /** Věta pro každého živého hráče zvlášť. Cizí se ven nikdy neposílá. */
+  septanda: Record<HracId, string>;
   nominace: Record<HracId, HracId>;
   kandidati: HracId[];
   hlasy: Record<HracId, HracId>;
@@ -61,6 +62,8 @@ export interface Kolo {
   obet: HracId | null;
   /** Tipy na sabotéra. Nemají vliv na hru, sčítají se do ceny Nejlepší čuch. */
   podezreli: Record<HracId, HracId>;
+  /** Kdo chce ukončit rozpravu dřív. Veřejné, je to nátlak sám o sobě. */
+  chtejiDal: HracId[];
 }
 
 export interface Nastaveni {
@@ -112,6 +115,7 @@ export type Akce =
   | { typ: 'NAVRHNOUT_OBET'; id: HracId; cil: HracId }
   | { typ: 'PREDAK_ROZHODL'; cil: HracId }
   | { typ: 'ZAPSAT_PODEZRELEHO'; id: HracId; cil: HracId }
+  | { typ: 'CHCI_DAL'; id: HracId }
   | { typ: 'DALSI_FAZE' }
   | { typ: 'ODPOJIL_SE'; id: HracId }
   | { typ: 'PRIPOJIL_SE'; id: HracId }

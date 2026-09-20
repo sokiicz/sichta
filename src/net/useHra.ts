@@ -31,7 +31,7 @@ export interface Hra {
 const SEED = Math.floor(Math.random() * 1_000_000);
 
 /** Fáze, kde se telefon podává dokola. Ostatní vidí celý stůl naráz. */
-const S_FRONTOU: ReadonlySet<string> = new Set(['rozdani', 'sichta', 'nominace', 'rada', 'noc']);
+const S_FRONTOU: ReadonlySet<string> = new Set(['rozdani', 'septanda', 'sichta', 'nominace', 'rada', 'noc']);
 
 function frontaProFazi(s: Stav): HracId[] {
   const zivi = s.hraci.filter((h) => h.zivy);
@@ -42,6 +42,9 @@ function frontaProFazi(s: Stav): HracId[] {
       const sm = s.aktualni?.smeny[s.aktualni.smeny.length - 1];
       return sm?.parta ?? [];
     }
+    case 'septanda':
+      // každý má vlastní větu, takže telefon musí projít všemi
+      return zivi.map((h) => h.id);
     case 'nominace':
       return zivi.map((h) => h.id);
     case 'rada':

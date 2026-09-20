@@ -5,6 +5,7 @@ import {
 } from '../ui/primitives';
 import { MAX_HRACU, MIN_HRACU, sestavaPro } from '../game/rules';
 import { ABECEDA_KODU, DELKA_KODU } from '../game/kod';
+import { jeDivokaSestava } from '../game/rules';
 import type { Hrac } from '../game/types';
 
 // ---------------------------------------------------------------- úvod
@@ -204,6 +205,13 @@ export function Satna({ kod, odkaz, hraci, jsemZakladatel, onZacit, onNastaveni,
           {!dost && <RadekHrace jmeno="ČEKÁ SE" stav="cekame" />}
         </div>
       </Blok>
+
+      {dost && jeDivokaSestava(hraci.length) && (
+        <Poznamka varovna>
+          V pěti kazí jen jeden a partie bývá krátká a divoká. Může se stát, že
+          ho najdete hned. Od šesti hráčů se hra pořádně rozjede.
+        </Poznamka>
+      )}
 
       {sestava && (
         <Blok style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>

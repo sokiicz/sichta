@@ -50,7 +50,10 @@ export function Predel({ kolo, smena, zbyvaSicht, onDal }: {
 // ---------------------------------------------------------------- zadání
 
 export function Zadani({ kolo, smena, parta, zustavaji, jsemVParte, podil, onPreskocit }: {
-  kolo: number; smena: Smena; parta: string[]; zustavaji: string[]; jsemVParte: boolean; podil: number; onPreskocit?: () => void;
+  kolo: number; smena: Smena; parta: string[]; zustavaji: string[];
+  /** Na jednom telefonu vždy false: tohle je obrazovka stolu, nesmí nikoho vypíchnout. */
+  jsemVParte: boolean;
+  podil: number; onPreskocit?: () => void;
 }) {
   return (
     <Obrazovka>
@@ -94,9 +97,25 @@ export function Zadani({ kolo, smena, parta, zustavaji, jsemVParte, podil, onPre
 
 // ---------------------------------------------------------------- tajná volba
 
-export function Volba({ kolo, smena, parta, mojeJmeno, sekundy, onVolba }: {
+/**
+ * Tajná volba na šichtě.
+ *
+ * Pravidlo o tom, že pracant kazit neumí, je napsané rovnou na obrazovce,
+ * a to všem stejně. Dřív se pracantovi volba mlčky přepsala na MAKAT, což
+ * vypadalo jako rozbitá appka. Říct to dopředu nic neprozradí: sabotér
+ * i pracant čtou tutéž větu.
+ *
+ * Po odevzdání se ukáže, co se doopravdy zapsalo. Obě role vidí stejně
+ * postavenou obrazovku, jen s jiným slovem, a to jen na vlastním telefonu.
+ */
+export function Volba({ kolo, smena, parta, mojeJmeno, sekundy, odevzdano, onVolba, onHotovo }: {
   kolo: number; smena: Smena; parta: string[]; mojeJmeno: string;
-  sekundy: number; onVolba: (v: 'makat' | 'kazit') => void;
+  /** null na jednom telefonu: fázi tam nehlídají hodiny, telefon se podává. */
+  sekundy: number | null;
+  /** Co reducer zapsal. Dokud je null, ještě se nevolilo. */
+  odevzdano: 'makat' | 'kazit' | null;
+  onVolba: (v: 'makat' | 'kazit') => void;
+  onHotovo: () => void;
 }) {
   return (
     <Obrazovka rez>
@@ -120,15 +139,29 @@ export function Volba({ kolo, smena, parta, mojeJmeno, sekundy, onVolba }: {
         </div>
       </Blok>
 
-      <div style={{ flexGrow: 1, minHeight: 0, display: 'flex', alignItems: 'center' }}>
-        <Veta>Vyber, co dnes odvedeš.<br />Nikdo se to nedozví.</Veta>
-      </div>
+      {odevzdano ? (
+        <>
+          <div style={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 18 }}>
+            <Razitko nadpis={odevzdano === 'kazit' ? 'KAZIT' : 'MAKAT'} popisek="ZAPSÁNO" />
+            <Veta>Změnit to už nejde. Nikdo se nedozví, co tu bylo.</Veta>
+          </div>
+          <Tlacitko druh="hlavni" vyska={82} onClick={onHotovo}>HOTOVO</Tlacitko>
+        </>
+      ) : (
+        <>
+          <div style={{ flexGrow: 1, minHeight: 0, display: 'flex', alignItems: 'center' }}>
+            <Veta>Vyber, co dnes odvedeš.<br />Nikdo se to nedozví.</Veta>
+          </div>
 
-      {/* Obě role vidí obě tlačítka úplně stejně. Zašedlé KAZIT by roli prozradilo přes stůl. */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-        <Tlacitko vyska={84} onClick={() => onVolba('makat')}>MAKAT</Tlacitko>
-        <Tlacitko vyska={84} onClick={() => onVolba('kazit')}>KAZIT</Tlacitko>
-      </div>
+          {/* Obě role vidí obě tlačítka úplně stejně. Zašedlé KAZIT by roli prozradilo přes stůl. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+            <Tlacitko vyska={84} onClick={() => onVolba('makat')}>MAKAT</Tlacitko>
+            <Tlacitko vyska={84} onClick={() => onVolba('kazit')}>KAZIT</Tlacitko>
+          </div>
+
+          <Poznamka>Kazit umí jen sabotér. Pracantovi se volba zapíše jako MAKAT.</Poznamka>
+        </>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderTop: '4px solid var(--ram)', paddingTop: 11 }}>
         <Stitek tlumeny>VOLBA JE TAJNÁ</Stitek>
@@ -142,7 +175,10 @@ export function Volba({ kolo, smena, parta, mojeJmeno, sekundy, onVolba }: {
 
 export function Vysledek({ kolo, smena, padla, sabotazi, parta, mojeJmeno, podil, onPreskocit }: {
   kolo: number; smena: Smena; padla: boolean; sabotazi: number;
-  parta: string[]; mojeJmeno: string; podil: number; onPreskocit?: () => void;
+  parta: string[];
+  /** null na jednom telefonu: výsledek čte celý stůl, nikdo tu není "ty". */
+  mojeJmeno: string | null;
+  podil: number; onPreskocit?: () => void;
 }) {
   return (
     <Obrazovka>
@@ -191,10 +227,16 @@ export function Vysledek({ kolo, smena, padla, sabotazi, parta, mojeJmeno, podil
 
 // ---------------------------------------------------------------- šeptanda
 
-export function Septanda({ text, podil, onPreskocit }: { text: string; podil: number; onPreskocit?: () => void }) {
+/**
+ * Šeptanda je soukromá: každý má jinou větu a nikdo ji nemůže ověřit.
+ * Text pod ní je nejdůležitější věta na téhle obrazovce. Bez ní se rozprava
+ * zvrhne na výslech "ukaž, co ti přišlo", a kdo nemá co ukázat, je hned
+ * sabotér. S ní je vymýšlení si legitimní tah.
+ */
+export function Septanda({ text, onHotovo }: { text: string; onHotovo: () => void }) {
   return (
     <Obrazovka tmava>
-      <Hlavicka nadpis="ŠEPTANDA" vpravo={<Stitek tlumeny>ZA ÚSPĚŠNOU ŠICHTU</Stitek>} />
+      <Hlavicka nadpis="ŠEPTANDA" vpravo={<Stitek tlumeny>JEN PRO TEBE</Stitek>} />
 
       <div style={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 22 }}>
         <svg width="44" height="44" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -203,16 +245,20 @@ export function Septanda({ text, podil, onPreskocit }: { text: string; podil: nu
         </svg>
 
         <div style={{
-          fontFamily: 'var(--font-nadpis)', fontSize: 34, lineHeight: 1.12,
+          fontFamily: 'var(--font-nadpis)', fontSize: 30, lineHeight: 1.16,
           color: 'var(--ocel-50)', animation: 'vyjet 300ms ease-out',
         }}>
           {text.toUpperCase()}
         </div>
 
-        <Poznamka>Šeptanda je vždycky pravdivá. Nikdy ale neřekne, kdo to byl.</Poznamka>
+        <Poznamka>
+          Tvoje věta je pravdivá. Každý u stolu dostal jinou a nikdo si tu cizí
+          neověří. Sabotéři dostali taky svou, takže si klidně vymyslí jinou.
+          Říct ji nahlas, zamlčet, nebo zalhat, je na tobě.
+        </Poznamka>
       </div>
 
-      <Ukazatel podil={podil} onPreskocit={onPreskocit} />
+      <Tlacitko druh="hlavni" vyska={82} onClick={onHotovo}>PŘEČTENO</Tlacitko>
     </Obrazovka>
   );
 }

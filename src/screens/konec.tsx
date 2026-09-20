@@ -7,8 +7,8 @@ import type { Role, Tym } from '../game/types';
 // ---------------------------------------------------------------- konec
 
 /** Kdo vyhrál. Žádná jména sabotérů, ta přijdou až na další obrazovce. */
-export function Konec({ vitez, duvod, sicht, padlo, cas, onOdhalit }: {
-  vitez: Tym; duvod: string; sicht: number; padlo: number; cas: string; onOdhalit: () => void;
+export function Konec({ vitez, duvod, sicht, padlo, stinu, onOdhalit }: {
+  vitez: Tym; duvod: string; sicht: number; padlo: number; stinu: number; onOdhalit: () => void;
 }) {
   return (
     <Obrazovka tmava rez>
@@ -29,7 +29,7 @@ export function Konec({ vitez, duvod, sicht, padlo, cas, onOdhalit }: {
         {[
           { p: 'ŠICHT', v: String(sicht) },
           { p: 'PADLO', v: String(padlo) },
-          { p: 'ČAS', v: cas },
+          { p: 'STÍNŮ', v: String(stinu) },
         ].map((x) => (
           <div key={x.p} style={{ flexGrow: 1, border: '3px solid var(--ram)', padding: 13, textAlign: 'center' }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--text-tlum)' }}>{x.p}</div>

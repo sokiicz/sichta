@@ -8,37 +8,82 @@ export interface Kdo { id: string; jmeno: string; zivy: boolean }
 // ---------------------------------------------------------------- rozprava
 
 /** Schválně nudná obrazovka. Cokoliv zajímavého by lákalo koukat do telefonu. */
-export function Rozprava({ sekundy, celkem, onDal }: { sekundy: number; celkem: number; onDal: () => void }) {
+/**
+ * Rozprava. Odpočet je strop, ne norma: často se vypovídá dřív a čekat na
+ * nulu je otrava. Většina živých ho proto může utnout.
+ *
+ * Kdo už chce dál, je vidět. Je to nátlak sám o sobě a zároveň informace
+ * do hry: kdo pořád spěchá pryč od rozpravy, si toho možná moc nepřeje.
+ */
+export function Rozprava({ sekundy, celkem, hlasovani, onDal, onChciDal }: {
+  sekundy: number; celkem: number;
+  /** null na jednom telefonu, tam rozhoduje ten, kdo ho drží. */
+  hlasovani: { kolik: number; potreba: number; jaChci: boolean } | null;
+  onDal: () => void;
+  onChciDal: () => void;
+}) {
+  const obsah = (
+    <>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.34em', color: 'var(--text-tlum)' }}>ROZPRAVA</span>
+        <Odpocet sekundy={sekundy} obri />
+      </div>
+
+      <div style={{ width: 200, height: 5, background: 'var(--ocel-600)' }}>
+        <div style={{ width: `${Math.round((sekundy / Math.max(1, celkem)) * 100)}%`, height: 5, background: 'var(--rez-400)', transition: 'width 1s linear' }} />
+      </div>
+
+      <div style={{ border: '4px solid var(--ram)', padding: '20px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="5" y="2" width="14" height="20" rx="2.5" stroke="var(--ocel-300)" strokeWidth="2" />
+          <path d="M10 18h4" stroke="var(--ocel-300)" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+        <span style={{ fontFamily: 'var(--font-nadpis)', fontSize: 25, letterSpacing: '0.2em' }}>TELEFONY DOLŮ</span>
+      </div>
+
+      <div style={{ fontSize: 'var(--t-prose-size)', lineHeight: 'var(--t-prose-lh)', color: 'var(--text-tlum)', textAlign: 'center', maxWidth: 265 }}>
+        Kdo byl na které šichtě si musíte připomenout nahlas. Přehled je teď zamčený.
+      </div>
+    </>
+  );
+
+  if (!hlasovani) {
+    return (
+      <Obrazovka tmava>
+        <button
+          type="button" onClick={onDal} aria-label="Ukončit rozpravu"
+          style={{
+            flexGrow: 1, border: 'none', background: 'none', padding: 0,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 32,
+          }}
+        >
+          {obsah}
+        </button>
+      </Obrazovka>
+    );
+  }
+
+  const zbyva = Math.max(0, hlasovani.potreba - hlasovani.kolik);
+
   return (
     <Obrazovka tmava>
-      <button
-        type="button" onClick={onDal} aria-label="Ukončit rozpravu"
-        style={{
-          flexGrow: 1, border: 'none', background: 'none', padding: 0,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 32,
-        }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.34em', color: 'var(--text-tlum)' }}>ROZPRAVA</span>
-          <Odpocet sekundy={sekundy} obri />
-        </div>
+      <div style={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 28 }}>
+        {obsah}
+      </div>
 
-        <div style={{ width: 200, height: 5, background: 'var(--ocel-600)' }}>
-          <div style={{ width: `${Math.round((sekundy / Math.max(1, celkem)) * 100)}%`, height: 5, background: 'var(--rez-400)', transition: 'width 1s linear' }} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+        <Tlacitko
+          druh={hlasovani.jaChci ? 'hlavni' : 'vedlejsi'}
+          vyska={74}
+          onClick={onChciDal}
+        >
+          {hlasovani.jaChci ? 'CHCEŠ DÁL' : 'MÁM DOST ŘEČÍ'}
+        </Tlacitko>
+        <div style={{ textAlign: 'center', fontSize: 'var(--t-meta-size)', fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-tlum)' }}>
+          {hlasovani.kolik} z {hlasovani.potreba}
+          {zbyva > 0 ? ` · chybí ještě ${zbyva}` : ' · rozprava končí'}
         </div>
-
-        <div style={{ border: '4px solid var(--ram)', padding: '20px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <rect x="5" y="2" width="14" height="20" rx="2.5" stroke="var(--ocel-300)" strokeWidth="2" />
-            <path d="M10 18h4" stroke="var(--ocel-300)" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          <span style={{ fontFamily: 'var(--font-nadpis)', fontSize: 25, letterSpacing: '0.2em' }}>TELEFONY DOLŮ</span>
-        </div>
-
-        <div style={{ fontSize: 'var(--t-prose-size)', lineHeight: 'var(--t-prose-lh)', color: 'var(--text-tlum)', textAlign: 'center', maxWidth: 265 }}>
-          Kdo byl na které šichtě si musíte připomenout nahlas. Přehled je teď zamčený.
-        </div>
-      </button>
+      </div>
     </Obrazovka>
   );
 }
@@ -46,7 +91,7 @@ export function Rozprava({ sekundy, celkem, onDal }: { sekundy: number; celkem: 
 // ---------------------------------------------------------------- nominace
 
 export function Nominace({ kdo, jaId, vybrany, sekundy, onVybrat, onPotvrdit }: {
-  kdo: Kdo[]; jaId: string; vybrany: string | null; sekundy: number;
+  kdo: Kdo[]; jaId: string; vybrany: string | null; sekundy: number | null;
   onVybrat: (id: string) => void; onPotvrdit: () => void;
 }) {
   const cil = kdo.find((k) => k.id === vybrany);
@@ -160,7 +205,7 @@ export function PosledniSlovo({ mluvi, potom, sekundy, podil, onPreskocit }: {
 // ---------------------------------------------------------------- rada
 
 export function Rada({ kandidati, vybrany, sekundy, jsemStin, hlasUtracen, onVybrat, onPotvrdit }: {
-  kandidati: Kdo[]; vybrany: string | null; sekundy: number;
+  kandidati: Kdo[]; vybrany: string | null; sekundy: number | null;
   jsemStin: boolean; hlasUtracen: boolean;
   onVybrat: (id: string) => void; onPotvrdit: () => void;
 }) {

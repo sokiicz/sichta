@@ -1,5 +1,5 @@
 import type { HracId, Odmena, Role, Smena, Stav } from './types';
-import { dostupneOdmeny, posledniSmena, ziviSaboteri } from './machine';
+import { dostupneOdmeny, posledniSmena, potrebaProSkok, ziviSaboteri } from './machine';
 
 /**
  * Co smí vidět jeden konkrétní hráč. Tohle je jediná cesta, kterou stav opouští
@@ -41,6 +41,8 @@ export interface Pohled {
     hlasoval: HracId | null;
     /** Jen předák a jen po padlé šichtě. Ostatním prázdné. */
     odmeny: Odmena[];
+    /** Moje šeptanda. Každý má jinou a cizí se ven neposílá. */
+    septanda: string | null;
   };
 
   /** Veřejné. Přesně tohle vidí celý stůl a nic víc. */
@@ -49,7 +51,7 @@ export interface Pohled {
     parta: HracId[];
     sabotazi: number | null;
     padla: boolean | null;
-    septanda: string | null;
+
     kandidati: HracId[];
     hlasy: { kdo: HracId; komu: HracId; stin: boolean }[];
     vyhosteny: HracId | null;
@@ -59,6 +61,10 @@ export interface Pohled {
     /** Kdo už v téhle fázi odevzdal. Jen kolik a kdo, nikdy co. */
     odevzdali: HracId[];
     odmena: Odmena | null;
+    /** Kdo chce utnout rozpravu. Veřejné, ať je vidět tlak. */
+    chtejiDal: HracId[];
+    /** Kolik jich musí chtít, aby se rozprava utnula. */
+    potrebaProSkok: number;
   };
 
   /** Až po konci hry. Do té doby null, jinak by to byl únik všeho naráz. */
@@ -154,6 +160,9 @@ export function pohledPro(s: Stav, jaId: HracId): Pohled {
       nominoval: k?.nominace[jaId] ?? null,
       hlasoval: k?.hlasy[jaId] ?? k?.hlasyStinu[jaId] ?? null,
       odmeny: s.predak === jaId ? dostupneOdmeny(s) : [],
+      // Vlastní věta. Cizí šeptanda se z pohledu nedostane ven ani omylem,
+      // protože se sem kopíruje jediný klíč, ne celý objekt.
+      septanda: k?.septanda[jaId] ?? null,
     },
 
     stul: {
@@ -162,7 +171,7 @@ export function pohledPro(s: Stav, jaId: HracId): Pohled {
       // počet sabotáží ven jde, až když je šichta vyhodnocená
       sabotazi: s.faze === 'sichta' ? null : sm?.sabotazi ?? null,
       padla: s.faze === 'sichta' ? null : sm?.padla ?? null,
-      septanda: k?.septanda ?? null,
+
       kandidati: k?.kandidati ?? [],
       // pod Tmou se hlasy neukazují vůbec
       hlasy: s.tmaNadHlasovanim && !konec ? [] : [
@@ -176,6 +185,8 @@ export function pohledPro(s: Stav, jaId: HracId): Pohled {
       odevzdali: odevzdaliVFazi(s),
       // odměnu vidí jen sabotéři, stůl ne
       odmena: mojeRole === 'saboter' || konec ? k?.odmena ?? null : null,
+      chtejiDal: k?.chtejiDal ?? [],
+      potrebaProSkok: potrebaProSkok(s),
     },
 
     konec: konec

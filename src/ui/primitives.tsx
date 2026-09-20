@@ -1,3 +1,4 @@
+import { createContext, useContext } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { vibrovat, VZOR } from './zvuk';
 
@@ -7,6 +8,40 @@ import { vibrovat, VZOR } from './zvuk';
  */
 
 // ---------------------------------------------------------------- obrazovka
+
+// ---------------------------------------------------------------- kdo drží telefon
+
+/**
+ * Na jednom telefonu se zařízení podává dokola a je snadné ztratit nit, kdo
+ * je zrovna na řadě. Jméno držitele proto visí nad každou obrazovkou, ne jen
+ * na té předávací. Online je kontext prázdný a pruh se vůbec nevykreslí,
+ * protože tam drží telefon každý svůj.
+ */
+const Drzitel = createContext<string | null>(null);
+
+export function PredejDrzitele({ jmeno, children }: { jmeno: string | null; children: ReactNode }) {
+  return <Drzitel.Provider value={jmeno}>{children}</Drzitel.Provider>;
+}
+
+function PruhDrzitele() {
+  const jmeno = useContext(Drzitel);
+  if (!jmeno) return null;
+  return (
+    <div
+      style={{
+        flexShrink: 0, display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 8,
+        padding: '7px 12px', background: 'var(--ocel-900)', borderBottom: '3px solid var(--ram)',
+      }}
+    >
+      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--text-tlum)' }}>
+        TELEFON DRŽÍ
+      </span>
+      <span style={{ fontFamily: 'var(--font-nadpis)', fontSize: 15, letterSpacing: '0.1em', color: 'var(--text-akcent)' }}>
+        {jmeno.toUpperCase()}
+      </span>
+    </div>
+  );
+}
 
 export function Obrazovka({
   children,
@@ -53,6 +88,7 @@ export function Obrazovka({
           }}
         />
       )}
+      <PruhDrzitele />
       <div
         style={{
           position: 'relative',
@@ -288,7 +324,9 @@ export function Fajfka() {
 
 // ---------------------------------------------------------------- čas
 
-export function Odpocet({ sekundy, obri }: { sekundy: number; obri?: boolean }) {
+export function Odpocet({ sekundy, obri }: { sekundy: number | null; obri?: boolean }) {
+  // null znamená, že fázi nehlídají hodiny. Zamrzlé číslo by vypadalo jako chyba.
+  if (sekundy === null) return null;
   const m = Math.floor(Math.max(0, sekundy) / 60);
   const s = Math.max(0, sekundy) % 60;
   const specha = sekundy <= 10 && sekundy > 0;

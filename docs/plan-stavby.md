@@ -78,6 +78,13 @@ Až na ně dojde, dostaneš podrobný návod krok za krokem.
 
 ---
 
+## Co přijde po playtestu
+
+- **Doladit čísla podle toho, co se opravdu stalo.** Simulace je strop, ne
+  předpověď, a u pětky nevypovídá skoro nic.
+- **Verze pro velký displej.** Teď je to stavěné na telefon v ruce. Na tabletu
+  nebo notebooku to funguje, ale nevyužívá to místo. Až bude hra usazená.
+
 ## Co se vědomě nestaví
 
 - **Účty a přihlašování.** Jméno a kód místnosti stačí.

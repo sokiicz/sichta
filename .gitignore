@@ -21,3 +21,6 @@ tsconfig.tsbuildinfo
 
 # ostatní env soubory
 *.env
+
+# pracovní skripty k simulacím, nepatří do repa
+scratch/

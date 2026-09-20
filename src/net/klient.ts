@@ -23,8 +23,16 @@ export function mujToken(): string {
   return t;
 }
 
-export const zakladnaUrl = (): string =>
-  (import.meta.env['VITE_WORKER_URL'] as string | undefined)?.replace(/\/$/, '') ?? '';
+/**
+ * V produkci appku servíruje ten samý worker, co drží API, takže se adresa
+ * nikam nepíše a nemůže se rozejít. Ve vývoji běží Vite na jiném portu,
+ * tam se musí říct přes VITE_WORKER_URL v .env.local. Prázdný řetězec
+ * znamená "síť není nastavená" a nabídne se jen hra na jednom telefonu.
+ */
+export const zakladnaUrl = (): string => {
+  if (import.meta.env.PROD) return window.location.origin;
+  return (import.meta.env['VITE_WORKER_URL'] as string | undefined)?.replace(/\/$/, '') ?? '';
+};
 
 export async function zalozitMistnost(): Promise<string> {
   const r = await fetch(`${zakladnaUrl()}/api/mistnost`, { method: 'POST' });
