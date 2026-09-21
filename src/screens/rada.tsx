@@ -44,7 +44,7 @@ export function Rozprava({ sekundy, celkem, hlasovani, onDal, onChciDal }: {
       </div>
 
       <div style={{ fontSize: 'var(--t-prose-size)', lineHeight: 'var(--t-prose-lh)', color: 'var(--text-tlum)', textAlign: 'center', maxWidth: 265 }}>
-        Kdo byl na které šichtě si musíte připomenout nahlas. Přehled je teď zamčený.
+        Kdo byl na které šichtě si musíte připomenout nahlas. Přehled je teď zamčený. Po rozpravě každý tajně nominuje, koho chce před radu.
       </div>
     </>
   );

@@ -108,7 +108,7 @@ změnit i dotazy níž.
 | `sit_navrat` | | po kolika pokusech |
 | `sit_odmitnuto` | `hra-bezi`, `plno`, `jmeno` | |
 | `bdeni` | `ok` / `odmitnuto` | |
-| `zapisnik`, `prehled`, `prehled_zamceny` | | |
+| `zapisnik`, `prehled`, `prehled_zamceny`, `pravidla_v_hre` | | |
 | `sdilet_odkaz` | `share` / `schranka` | |
 | `zvuk` | `zapnuto` / `vypnuto` | |
 | `zalozeni_selhalo` | | |

@@ -5,30 +5,133 @@ import {
 } from '../ui/primitives';
 import { prepnoutZvuk, zvukZapnuty } from '../ui/zvuk';
 import { zaznamenat } from '../ui/telemetrie';
+import { MAX_HRACU, MIN_HRACU, sestavaPro } from '../game/rules';
 
 // ---------------------------------------------------------------- pravidla
 
-const PRAVIDLA = [
-  { nadpis: 'O CO JDE', text: 'Část party tajně kazí šichty. Pracanti je musí vyhostit dřív, než dojdou kola.', akcent: true },
-  { nadpis: 'KOLO', text: 'Parta jde na šichtu a tajně volí. Pak se mluví, nominuje a hlasuje. Po padlé šichtě je noc.' },
-  { nadpis: 'ŠEPTANDA', text: 'Za prošlou šichtu dostane každý vlastní pravdivou větu. Nikdo si cizí neověří, sabotér si tu svou klidně vymyslí.' },
-  { nadpis: 'SABOTÁŽ', text: 'Padlá šichta dá sabotérům jednu odměnu: vraždu, imunitu pro kohokoliv, nebo tmu nad hlasováním. Vraždit dvě kola po sobě nejde. Imunitu i tmu se stůl dozví ráno.' },
-  { nadpis: 'RADA', text: 'Nominovat nikoho i zdržet se hlasování jsou plnohodnotné tahy. Odchází jen ten, kdo má nadpoloviční většinu hlasů a aspoň dva. Jinak nikdo.' },
-  { nadpis: 'STÍNY', text: 'Kdo odejde, zůstává u stolu a mluví dál. Nenominuje a má jeden hlas na celý zbytek hry. Použitím je pryč, zdržením ne.' },
-  { nadpis: 'VÝHRA', text: 'Pracanti vyhrají vyhoštěním posledního sabotéra. Sabotéři vyhrají, když jim dojdou šichty a aspoň jeden žije.', patina: true },
+/**
+ * Pravidla v appce jsou úplná, ne zkrácená. Hra má být férová jen díky
+ * strategii a argumentaci, ne díky tomu, kdo zná pravidla líp. Proto si je
+ * každý může projít na svém telefonu před hrou i během ní (z přehledu).
+ * Delší verze s příklady je v docs/jak-hrat.md.
+ */
+
+interface Karta {
+  nadpis: string;
+  text?: string;
+  /** Kroky pod textem, například průběh kola. */
+  kroky?: string[];
+  /** Kroky jdou po sobě a číslují se. Jinak je to jen výčet. */
+  cislovane?: boolean;
+  akcent?: boolean;
+  patina?: boolean;
+}
+
+/** Sestavy z rules.ts, ať se pravidla nerozejdou s kódem. */
+const SESTAVY_TEXT = Array.from({ length: MAX_HRACU - MIN_HRACU + 1 }, (_, i) => {
+  const n = MIN_HRACU + i;
+  const s = sestavaPro(n);
+  return `${n} hráčů: ${s.saboteri} ${s.saboteri === 1 ? 'sabotér' : s.saboteri < 5 ? 'sabotéři' : 'sabotérů'}, ${s.limitSicht} ${s.limitSicht < 5 ? 'šichty' : 'šicht'}`;
+});
+
+const PRAVIDLA: Karta[] = [
+  {
+    nadpis: 'O CO JDE', akcent: true,
+    text: 'Část party jsou tajní sabotéři. Každé kolo jde půlka stolu na šichtu a každý z party tajně zmáčkne MAKAT, nebo KAZIT. Když nikdo nekazil, šichta prošla. Když aspoň jeden kazil, padla a stůl se dozví, kolik lidí kazilo. To je jediný tvrdý důkaz ve hře. Pracanti musí sabotéry vyhostit dřív, než dojdou šichty.',
+  },
+  {
+    nadpis: 'KDO JE KDO',
+    kroky: [
+      'Pracant: většina stolu. Na šichtě umí jen makat. Nezná nikoho.',
+      'Sabotér: tajná menšina. Sabotéři se od začátku znají jmenovitě. Kazit můžou, nemusí.',
+      'Předák: jeden ze sabotérů. V noci vybírá odměnu a rozhoduje, kdo umře. Když odejde, přebírá to další sabotér.',
+      'Stín: hráč po vyhoštění nebo po vraždě. Zůstává u stolu a mluví dál. Nechodí na šichty, nenominuje, má jeden hlas na zbytek hry.',
+      'Počet sabotérů je vždy veřejný.',
+    ],
+  },
+  {
+    nadpis: 'KOLO KROK ZA KROKEM', cislovane: true,
+    text: 'Časy jsou stropy. Fáze, ve které už odevzdali všichni, skončí sama.',
+    kroky: [
+      'Zadání, 15 s: aplikace vylosuje partu, zhruba půlku živých. Vidí ji celý stůl a zůstane v přehledu.',
+      'Šichta, 45 s: každý z party tajně ťukne MAKAT, nebo KAZIT. Tlačítka vypadají stejně pro obě role.',
+      'Výsledek, 22 s: prošla, nebo padla a kolik lidí kazilo.',
+      'Šeptanda, 20 s: jen po prošlé šichtě. Každý dostane vlastní pravdivou větu.',
+      'Rozprava, 3 až 5 min: telefony lícem dolů, mluví se. Většina živých ji může utnout.',
+      'Nominace, 60 s: každý živý tajně nominuje jednoho, nebo nikoho. Před radu jdou dva s nejvíc nominacemi.',
+      'Poslední slovo, 30 s na hlavu: každý kandidát se obhájí, ostatní mlčí.',
+      'Rada, 45 s: hlasuje se pro kandidáta, nebo se zdržíš. Pak se ukáže, kdo koho volil.',
+      'Vyhoštění: odchází jen ten, kdo má nadpoloviční většinu hlasů a aspoň dva. Ukáže se mu role.',
+      'Noc, 60 s: jen po padlé šichtě. Předák vybírá odměnu, ostatní tipují podezřelého.',
+      'Ráno: kdo umřel, kdo má imunitu, nebo že bude tma. Pak další šichta.',
+    ],
+  },
+  {
+    nadpis: 'ŠEPTANDA',
+    text: 'Odměna za prošlou šichtu. Každý dostane jednu vlastní větu a ta je vždy pravdivá. Třeba „aspoň jeden z téhle dvojice je pracant" nebo „v kole 2 nominoval právě jeden sabotér". Nikdo si cizí větu neověří. Pracant ji řekne nahlas a hájí. Sabotér dostal větu ze stejného pytle, ale k ničemu mu není, takže lže, nebo mlčí. Za jednu šichtu vzniknou nejvýš tři různé věty, takže víc lidí může dostat tutéž. Dva se stejnou větou se potvrzují.',
+  },
+  {
+    nadpis: 'PADLÁ ŠICHTA A NOC',
+    text: 'Předák vybere jednu ze tří odměn. Vražda: jeden hráč dnes v noci končí. Imunita: kdokoliv, i pracant, nemůže jít do nejbližší rady. Tma: u nejbližší rady se neukáže, kdo koho volil. Vraždit nejde dvě kola po sobě. Sabotéři předákovi navrhují oběť, on rozhodne. Všichni ostatní zatím zapisují podezřelého, takže nikdo nepozná, kdo v noci opravdu rozhoduje. Ráno se stůl dozví oběť, imunitu i tmu.',
+  },
+  {
+    nadpis: 'RADA',
+    text: 'Nominovat nikoho i zdržet se hlasování jsou plnohodnotné tahy. Když nikdo nikoho nenominuje, rada se přeskočí. Odchází jen ten, kdo má nadpoloviční většinu odevzdaných hlasů a nejméně dva. Při remíze nikdo. Kolo bez vyhoštění je normální výsledek, jen vám ubyla šichta. Hlasy jsou veřejné, kromě tmy.',
+  },
+  {
+    nadpis: 'STÍNY',
+    text: 'Kdo odejde, sedí u stolu dál a mluví dál. Má jeden hlas na celý zbytek hry: použitím je nadobro pryč, i když rada skončí bez vyhoštění. Zdržením se neutratí. Stín nenominuje, nemůže být nominován a nechodí na šichty. Vyřazení sabotéři tvrdí, že byli pracanti, úplně stejně jako vyřazení pracanti.',
+  },
+  {
+    nadpis: 'VÝHRA', patina: true,
+    text: 'Pracanti vyhrají vyhoštěním posledního sabotéra. Sabotéři vyhrají, když dojdou šichty a aspoň jeden z nich žije, nebo když nezůstane žádný živý pracant. Žádné pravidlo o rovnosti počtů není: i jeden pracant proti dvěma sabotérům může vyhrát, protože stíny mají hlasy.',
+  },
+  {
+    nadpis: 'KOLIK VÁS JE',
+    text: 'Parta na šichtu je vždy zhruba půlka živých a nikdy celý stůl. Pětka je tréninková partie, od šesti se hra rozjede.',
+    kroky: SESTAVY_TEXT,
+  },
+  {
+    nadpis: 'U STOLU',
+    kroky: [
+      'Telefon je jen tvůj. Nikomu ho nepůjčuj, nikomu nekoukej přes rameno.',
+      'Během rozpravy lícem dolů. Přehled šicht a zápisník jsou zamčené, kdo chce něco vědět, ptá se nahlas.',
+      'Sahej na telefon v každé fázi, i když nemáš co dělat. Kdo ho bere jen v noci, prozradí se.',
+      'Nekoukej, jak dlouho kdo kouká. A nedávej k tomu důvod.',
+      'Stíny mluví. Vyřazený hráč hraje dál slovy.',
+      'Nic se neukazuje. Kdo ukáže roli nebo šeptandu, zabil hru.',
+    ],
+  },
+  {
+    nadpis: 'KDYŽ SE NĚCO POKAZÍ',
+    kroky: [
+      'Někomu vypadne spojení: hra se pro všechny zastaví, odpočet stojí. Po návratu se pokračuje od stejné vteřiny. Zakladatel může rozhodnout, že se hraje bez něj.',
+      'Zavřená karta nebo obnovená stránka: aplikace tě do tří hodin vrátí zpátky do hry.',
+      'Nedá se dohrát: zakladatel šichtu ukončí z pauzy nebo z přehledu, na dvě ťuknutí. Konec je bez vítěze, role se odhalí.',
+      'Přehled a zápisník máš na tlačítkách dole. Přehled ukazuje historii šicht a tvou roli, zápisník je jen tvůj.',
+    ],
+  },
 ];
 
-export function Pravidla({ onZpet }: { onZpet: () => void }) {
+export function Pravidla({ onZpet, vHre }: { onZpet: () => void; vHre?: boolean }) {
   const [zvuk, setZvuk] = useState(zvukZapnuty());
 
   return (
     <Obrazovka>
       <div style={{ display: 'flex', alignItems: 'center', gap: 13, borderBottom: '3px solid var(--ram)', paddingBottom: 12 }}>
         <Zpet onClick={onZpet} />
-        <h1 style={{ margin: 0, fontFamily: 'var(--font-nadpis)', fontWeight: 400, fontSize: 26, letterSpacing: '0.05em' }}>PRAVIDLA</h1>
+        <h1 style={{ margin: 0, flexGrow: 1, fontFamily: 'var(--font-nadpis)', fontWeight: 400, fontSize: 26, letterSpacing: '0.05em' }}>PRAVIDLA</h1>
+        <Stitek tlumeny>{vHre ? 'KDYKOLIV' : '3 MINUTY'}</Stitek>
       </div>
 
       <Rostouci style={{ gap: 12 }}>
+        {!vHre && (
+          <Poznamka>
+            Přečti si to celé, každý na svém telefonu. Hra je férová jen tehdy,
+            když všichni vědí totéž a rozhoduje jen to, jak hrajete a jak mluvíte.
+          </Poznamka>
+        )}
+
         {PRAVIDLA.map((p) => (
           <div
             key={p.nadpis}
@@ -38,7 +141,14 @@ export function Pravidla({ onZpet }: { onZpet: () => void }) {
             }}
           >
             <div style={{ fontFamily: 'var(--font-nadpis)', fontSize: 20, letterSpacing: '0.04em', marginBottom: 6 }}>{p.nadpis}</div>
-            <div style={{ fontSize: 'var(--t-prose-size)', lineHeight: 1.6, color: 'var(--text)' }}>{p.text}</div>
+            {p.text && <div style={{ fontSize: 'var(--t-prose-size)', lineHeight: 1.6, color: 'var(--text)' }}>{p.text}</div>}
+            {p.kroky && (
+              <ol style={{ margin: p.text ? '8px 0 0' : 0, padding: '0 0 0 18px', listStyle: p.cislovane ? 'decimal' : 'square', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {p.kroky.map((k) => (
+                  <li key={k} style={{ fontSize: 'var(--t-prose-size)', lineHeight: 1.55, color: 'var(--text)' }}>{k}</li>
+                ))}
+              </ol>
+            )}
           </div>
         ))}
 
@@ -52,8 +162,7 @@ export function Pravidla({ onZpet }: { onZpet: () => void }) {
         </div>
       </Rostouci>
 
-      <Blok><Veta>Během rozpravy mají telefony ležet lícem dolů. Jinak se z toho stane listování, ne hádka. Přehled šicht a zápisník máš na tlačítkách dole, během rozpravy jsou zamčené.</Veta></Blok>
-      <Tlacitko vyska={76} onClick={onZpet}>ROZUMÍM</Tlacitko>
+      <Tlacitko druh="hlavni" vyska={76} onClick={onZpet}>{vHre ? 'ZPĚT DO HRY' : 'ROZUMÍM'}</Tlacitko>
     </Obrazovka>
   );
 }

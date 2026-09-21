@@ -227,6 +227,11 @@ export function Satna({
         </Blok>
       )}
 
+      <Poznamka>
+        Poprvé u stolu? Ať si každý projde PRAVIDLA nahoře, na svém telefonu.
+        Tři minuty. Pak rozhoduje jen to, jak hrajete a jak mluvíte.
+      </Poznamka>
+
       <Blok style={{ flexGrow: 1, minHeight: 0, overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <Popisek>SEŠLI SE</Popisek>

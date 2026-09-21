@@ -32,8 +32,8 @@ export function OdkrytiRole({ role, spoluSaboteri, jsemPredak, pocetSaboteru, on
       <div
         style={{
           flexGrow: 1, minHeight: 0, border: 'var(--ram-akce) solid var(--ram)',
-          display: 'flex', flexDirection: 'column', justifyContent: 'center',
-          gap: 20, padding: 24, overflow: 'hidden',
+          display: 'flex', flexDirection: 'column', justifyContent: 'safe center',
+          gap: 20, padding: 24, overflowY: 'auto',
         }}
       >
         {drzim && role ? (
@@ -66,7 +66,8 @@ export function OdkrytiRole({ role, spoluSaboteri, jsemPredak, pocetSaboteru, on
                     {jsemPredak ? 'TY' : (spoluSaboteri.find((s) => s.predak)?.jmeno.toUpperCase() ?? '?')}
                   </div>
                   <div style={{ marginTop: 7, fontSize: 'var(--t-prose-size)', lineHeight: 'var(--t-prose-lh)', color: 'var(--text-tlum)' }}>
-                    {jsemPredak ? 'V noci rozhoduješ ty. Ostatní navrhují.' : 'V noci navrhuješ, rozhoduje předák.'}
+                    {jsemPredak ? 'V noci rozhoduješ ty, ostatní navrhují.' : 'V noci navrhuješ, rozhoduje předák.'}
+                    {' '}Na šichtě smíš kazit. Stůl se dozví jen, kolik lidí kazilo.
                   </div>
                 </div>
               </>
@@ -81,7 +82,7 @@ export function OdkrytiRole({ role, spoluSaboteri, jsemPredak, pocetSaboteru, on
                 <div style={{ borderTop: '2px solid var(--ram)', paddingTop: 19 }}>
                   <Popisek>ÚKOL</Popisek>
                   <div style={{ marginTop: 10, fontSize: 'var(--t-body-size)', fontWeight: 600, lineHeight: 'var(--t-body-lh)' }}>
-                    {pocetSaboteru} z vás kazí. Najdi je dřív, než dojdou šichty.
+                    {pocetSaboteru} z vás kazí. Na šichtě umíš jen makat. Najdi je dřív, než dojdou šichty.
                   </div>
                 </div>
               </>

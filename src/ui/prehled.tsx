@@ -4,6 +4,7 @@ import { Popisek, Tlacitko, TlacitkoOpatrne } from './primitives';
 import { zaznamenat } from './telemetrie';
 import { OdkrytiRole } from '../screens/role';
 import { SeznamKol, type KoloPrehled } from '../screens/konec';
+import { Pravidla } from '../screens/pomocne';
 import type { HracId, Role } from '../game/types';
 
 /**
@@ -48,9 +49,10 @@ export function PoskytniPrehled({ data, zamceno, odchod = null, children }: {
 export function Prehled() {
   const { data, zamceno, odchod } = useContext(PrehledCtx);
   const [otevreno, setOtevreno] = useState(false);
+  const [pravidla, setPravidla] = useState(false);
 
   // Když se přehled zamkne nebo změní držitel telefonu, zavře se.
-  useEffect(() => { if (zamceno || !data) setOtevreno(false); }, [zamceno, data === null]);
+  useEffect(() => { if (zamceno || !data) { setOtevreno(false); setPravidla(false); } }, [zamceno, data === null]);
 
   if (!data) return null;
 
@@ -80,6 +82,16 @@ export function Prehled() {
     );
   }
 
+  // Pravidla jsou k dispozici i během hry. Kdo si není jistý, co znamená
+  // tma nebo hlas stínu, se podívá, místo aby se ptal a prozradil, že neví.
+  if (pravidla) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'var(--pozadi)' }}>
+        <Pravidla vHre onZpet={() => setPravidla(false)} />
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -106,6 +118,11 @@ export function Prehled() {
             role={data.role} spoluSaboteri={data.spoluSaboteri}
             jsemPredak={data.jsemPredak} pocetSaboteru={data.pocetSaboteru}
           />
+        </div>
+
+        <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Popisek>NEJSI SI JISTÝ PRAVIDLEM</Popisek>
+          <Tlacitko vyska={52} male onClick={() => { zaznamenat('pravidla_v_hre'); setPravidla(true); }}>PRAVIDLA</Tlacitko>
         </div>
 
         {odchod && (

@@ -49,7 +49,7 @@ V noci vybírá, co si sabotéři vezmou za padlou šichtu, a rozhoduje, kdo
 umře. Když předák odejde ze hry, přebírá to další sabotér podle pořadí u
 stolu.
 
-**Stín.** Kdokoliv, kdo byl vyhoštěn nebo zavražděn. Neodchází od stolu.
+**Stín.** Každý po vyhoštění nebo po vraždě. Neodchází od stolu.
 Mluví dál, hádá se dál, jen ztratil moc: nechodí na šichty, nenominuje,
 nemůže být nominován a má jediný hlas na celý zbytek hry.
 

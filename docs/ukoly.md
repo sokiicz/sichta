@@ -113,6 +113,9 @@ Velikost: S = do hodiny, M = půl dne, L = den a víc. Každý úkol má napsan�
 - [x] **6.13 Šatna na malém telefonu** · S · hotovo 2026-09-21
   Na jednom telefonu bez bloku s kódem, přidání hráče v seznamu a jako hlavní tlačítko, nastavení v hlavičce. Jedno tlačítko dole místo dvou.
 
+- [x] **6.14 Úplná pravidla v appce** · S · hotovo 2026-09-21
+  Obrazovka Pravidla je celý průvodce (role, kolo krok za krokem s časy, šeptanda, noc, rada, stíny, výhra, sestavy z `rules.ts`, etiketa, výpadky). Dostupná i během hry z přehledu. Šatna vyzve nováčky, role říká, co z ní plyne na šichtě, rozprava říká, co přijde po ní.
+
 - [ ] **6.2 Protokol partie** · M
   Na obrazovce Odhalení tlačítko Sdílet: text a JSON s průběhem (party, výsledky, hlasy, vyhoštění, oběti, role). Jediný zdroj dat na doladění `rules.ts`. Doporučuji před playtestem.
 
