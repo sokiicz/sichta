@@ -13,6 +13,7 @@ root rules at `D:/ai/CLAUDE.md`.
 - `docs/audit-aplikace.md` — audit kódu, hry a plánu z 2026-09-20, nálezy K/U/D
 - `docs/ukoly.md` — úkoly v pořadí oprav, odkazují na nálezy auditu
 - `docs/mereni.md` — měření chování: sloupce v Analytics Engine, seznam událostí, dotazy
+- `docs/jak-hrat.md` — pravidla a průvodce pro hráče, kteří hru neznají. Při změně pravidel aktualizovat spolu s design.md
 - `brand/tokens.css` — **zdroj pravdy pro barvy.** Ne mockupy.
 - `brand/README.md` — pravidla značky a tón textů
 - `src/game/` — čistá herní logika bez UI, pokrytá testy

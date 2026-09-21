@@ -9,6 +9,8 @@ Padlá šichta je jediný tvrdý důkaz ve hře, ale zároveň odmění sabotér
 
 5 až 12 hráčů, jeden večer, žádná registrace.
 
+Kompletní pravidla a průvodce pro nováčky: [docs/jak-hrat.md](docs/jak-hrat.md).
+
 ## Spuštění
 
 ```bash
