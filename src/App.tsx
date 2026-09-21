@@ -13,6 +13,7 @@ import { Pauza, Pravidla } from './screens/pomocne';
 import { NastaveniHry } from './screens/nastaveni';
 import { PoskytniZapisnik, Zapisnik } from './ui/zapisnik';
 import { PoskytniPrehled, Prehled as PrehledHry, type DataPrehledu } from './ui/prehled';
+import type { Odchod } from './ui/prehled';
 import { useBdeni } from './ui/bdeni';
 import { nastavitKontext, zaznamenat } from './ui/telemetrie';
 
@@ -110,6 +111,9 @@ function useOdpocetLokalni(klic: string, delka: number, bezi: boolean, onDoslo: 
  * Čerstvé sezení se obnoví samo, starší se jen nabídne na úvodu.
  */
 const KLIC_SEZENI = 'sichta:sezeni';
+
+/** „1 hráč", „3 hráči", „5 hráčů". */
+const hracu = (n: number) => `${n} ${n === 1 ? 'hráč' : n >= 2 && n <= 4 ? 'hráči' : 'hráčů'}`;
 const CERSTVE_SEZENI = 3 * 60 * 60 * 1000;
 
 interface Sezeni { kod: string; jmeno: string; kdy: number }
@@ -279,7 +283,7 @@ export default function App() {
   if (krok === 'uvod') {
     const ulozena = hra.hotseatUlozena;
     const rozehrana = ulozena
-      ? `Na tomhle telefonu je rozehraná partie: ${ulozena.hracu} hráčů, právě ${NAZVY_FAZI[ulozena.faze] ?? ulozena.faze}.`
+      ? `Na tomhle telefonu je rozehraná partie: ${hracu(ulozena.hracu)}, právě ${NAZVY_FAZI[ulozena.faze] ?? ulozena.faze}.`
       : stareSezeni
         ? `Naposledy jsi hrál online v šichtě ${stareSezeni.kod} jako ${stareSezeni.jmeno}.`
         : null;
@@ -295,6 +299,7 @@ export default function App() {
         chyba={chyba}
         rozehrana={rozehrana}
         onPokracovat={pokracovat}
+        onZahodit={rozehrana ? () => { zaznamenat('zahodit_rozehranou', { detail: ulozena ? 'hotseat' : 'online' }); nova(); } : undefined}
         onZalozit={() => { zaznamenat('volba_rezimu', { detail: 'zalozit', detail2: rozehrana ? 'misto_rozehrane' : '' }); nova(); setRezim('online'); setZalozit(true); setKrok('prezdivka'); }}
         onPripojit={() => { zaznamenat('volba_rezimu', { detail: 'pripojit', detail2: rozehrana ? 'misto_rozehrane' : '' }); nova(); setRezim('online'); setZalozit(false); setKrok('kod'); }}
         onHotSeat={() => { zaznamenat('volba_rezimu', { detail: 'hotseat', detail2: rozehrana ? 'misto_rozehrane' : '' }); nova(); setRezim('hotseat'); setKrok('prezdivka'); }}
@@ -345,13 +350,12 @@ export default function App() {
   if (krok === 'satna') {
     return (
       <Satna
-        kod="JEDEN TELEFON"
+        kod={null}
         hraci={(hotseatStav?.hraci ?? []).map((h) => ({ id: h.id, jmeno: h.jmeno, zakladatel: h.zakladatel, pripojeny: true }))}
         jaId={null}
         jsemZakladatel
-        popisekAkce="PŘIDAT HRÁČE"
         onPravidla={doPravidel}
-        onNastaveni={() => setKrok('prezdivka')}
+        onPridat={() => { setJmeno(''); setKrok('prezdivka'); }}
         onNastaveniHry={() => setKrok('nastaveni')}
         onVyhodit={(id) => poslat({ typ: 'ODEBRAT_HRACE', id })}
         onZacit={() => { poslat({ typ: 'ZACIT' }); setKrok('hra'); }}
@@ -374,7 +378,7 @@ export default function App() {
   if (p.faze === 'satna') {
     return (
       <Satna
-        kod={kod ?? ''}
+        kod={kod}
         odkaz={kod ? `${window.location.origin}${window.location.pathname}?k=${kod}` : null}
         hraci={p.hraci}
         jaId={p.ja.id}
@@ -394,6 +398,8 @@ export default function App() {
         zbyvaMs={p.pauza.zbyva} odMs={p.pauza.od} posunHodin={posunHodin}
         jsemZakladatel={jsemZakladatel}
         onHratBezNej={() => poslat({ typ: 'HRAT_BEZ_NEJ', id: p.pauza!.kvuli })}
+        onUkoncit={() => { zaznamenat('ukoncit', { detail: 'pauza' }); poslat({ typ: 'UKONCIT' }); }}
+        onOdejit={() => { zaznamenat('odejit', { detail: 'pauza' }); opustitSezeni(); }}
       />
     );
   }
@@ -739,7 +745,7 @@ export default function App() {
 
         return (
           <Konec
-            vitez={p.vitez ?? 'saboteri'} duvod={p.duvodKonce ?? ''}
+            vitez={p.vitez} duvod={p.duvodKonce ?? ''}
             sicht={p.stul.historie.length}
             padlo={p.stul.historie.filter((x) => x.smeny.some((sm) => sm.padla)).length}
             stinu={p.hraci.length - zivi.length}
@@ -766,11 +772,27 @@ export default function App() {
       }
     : null;
 
+  // Když se nedá dohrát: zakladatel ukončí pro všechny, ostatní odejdou.
+  // Na jednom telefonu ukončí ten, kdo ho zrovna drží.
+  const odchod: Odchod | null = !pomucky
+    ? null
+    : !jeOnline || jsemZakladatel
+      ? {
+          popis: 'UKONČIT ŠICHTU',
+          potvrzeni: jeOnline ? 'OPRAVDU UKONČIT PRO VŠECHNY?' : 'OPRAVDU UKONČIT?',
+          onClick: () => { zaznamenat('ukoncit', { detail: jeOnline ? 'online' : 'hotseat' }); poslat({ typ: 'UKONCIT' }); },
+        }
+      : {
+          popis: 'ODEJÍT ZE ŠICHTY',
+          potvrzeni: 'OPRAVDU ODEJÍT?',
+          onClick: () => { zaznamenat('odejit', { detail: 'prehled' }); opustitSezeni(); },
+        };
+
   return (
     <PredejDrzitele jmeno={jeOnline ? null : naRade ? jm(naRade) : null}>
       <Pomucky.Provider value={pomucky}>
         <PoskytniZapisnik kod={kod} partie={p.partie} hracId={ja} jmeno={jm(ja)} aktivni={pomucky}>
-          <PoskytniPrehled data={dataPrehledu} zamceno={p.faze === 'rozprava'}>
+          <PoskytniPrehled data={dataPrehledu} zamceno={p.faze === 'rozprava'} odchod={odchod}>
             {obrazovka}
             <PrehledHry />
             <Zapisnik />

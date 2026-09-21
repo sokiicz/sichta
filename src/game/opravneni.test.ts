@@ -32,6 +32,8 @@ describe('kdo smí co poslat', () => {
     expect(smiPoslat(s, { typ: 'ZACIT' }, jiny)).toBe(false);
     expect(smiPoslat(s, { typ: 'ZMENIT_NASTAVENI', nastaveni: { vrazdy: false } }, jiny)).toBe(false);
     expect(smiPoslat(s, { typ: 'ZNOVU' }, jiny)).toBe(false);
+    expect(smiPoslat(s, { typ: 'UKONCIT' }, zakladatel)).toBe(true);
+    expect(smiPoslat(s, { typ: 'UKONCIT' }, jiny)).toBe(false);
     expect(smiPoslat(s, { typ: 'HRAT_BEZ_NEJ', id: jiny }, zakladatel)).toBe(true);
     expect(smiPoslat(s, { typ: 'HRAT_BEZ_NEJ', id: zakladatel }, jiny)).toBe(false);
   });

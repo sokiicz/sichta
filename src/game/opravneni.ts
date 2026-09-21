@@ -28,6 +28,7 @@ export function smiPoslat(s: Stav, a: Akce, od: HracId): boolean {
     case 'ZMENIT_NASTAVENI':
     case 'ZNOVU':
     case 'HRAT_BEZ_NEJ':
+    case 'UKONCIT':
       return hrac.zakladatel;
 
     // Odejít smí každý sám, vyhodit smí jen zakladatel.

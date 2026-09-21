@@ -107,6 +107,12 @@ Velikost: S = do hodiny, M = půl dne, L = den a víc. Každý úkol má napsan�
 - [x] **6.1 Měření chování** · M · hotovo 2026-09-21
   Workers Analytics Engine bez cookies. Worker zapisuje herní události (fáze, výsledky, odměny, konce, pauzy, zamítnuté akce), telefon posílá obrazovky, rage kliky, mrtvé kliky, chyby, výpadky. Sloupce a dotazy v [mereni.md](mereni.md).
 
+- [x] **6.12 Předčasný konec a zahození rozehrané** · S · hotovo 2026-09-21
+  Akce `UKONCIT` (jen zakladatel): konec bez vítěze, role se odhalí. Tlačítko na dvě ťuknutí v pauze, v přehledu (ostatní online odejdou) a na úvodu u rozehrané partie.
+
+- [x] **6.13 Šatna na malém telefonu** · S · hotovo 2026-09-21
+  Na jednom telefonu bez bloku s kódem, přidání hráče v seznamu a jako hlavní tlačítko, nastavení v hlavičce. Jedno tlačítko dole místo dvou.
+
 - [ ] **6.2 Protokol partie** · M
   Na obrazovce Odhalení tlačítko Sdílet: text a JSON s průběhem (party, výsledky, hlasy, vyhoštění, oběti, role). Jediný zdroj dat na doladění `rules.ts`. Doporučuji před playtestem.
 

@@ -223,6 +223,21 @@ async function main() {
   overit(rozdil > 0 && Math.abs(rozdil - zbyvalo) < 3000, `odpočet pokračuje od stejné vteřiny (zbývalo ${Math.round(zbyvalo / 1000)} s, teď ${Math.round(rozdil / 1000)} s, původně končil ${konecPred ? 'v ' + new Date(konecPred).toISOString().slice(11, 19) : '?'})`);
 
   // ---------------------------------------------------------------- pozdní příchozí
+  // ---------------------------------------------------------------- předčasný konec
+  console.log('\nPředčasný konec');
+  poslat(jiny, { typ: 'UKONCIT' });
+  await cekej(600);
+  overit(zakladatel.pohled?.faze !== 'konec', 'ukončení od nezakladatele se zahodí');
+  poslat(zakladatel, { typ: 'UKONCIT' });
+  const doKonce = await pockatNaFazi(zakladatel, 'konec', 3000);
+  overit(doKonce >= 0, `zakladatel šichtu ukončí (fáze ${zakladatel.pohled?.faze})`);
+  overit(zakladatel.pohled?.vitez === null, 'konec je bez vítěze');
+  overit(zakladatel.pohled?.konec?.role != null, 'role se po ukončení odhalí');
+  await cekej(300);
+  // Klient z výpadku má zavřené spojení a starý pohled, počítají se jen živá spojení.
+  const zivaSpojeni = [...klienti.filter((k) => k.ws.readyState === 1), navrat];
+  overit(zivaSpojeni.every((k) => k.pohled?.faze === 'konec'), `konec vidí všichni (${zivaSpojeni.length} spojení)`);
+
   console.log('\nPozdní příchozí');
   const pozde = await pripojit(kod, `pozde-${Date.now()}`, 'Pozde');
   await cekej(800);

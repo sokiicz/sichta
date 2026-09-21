@@ -1,28 +1,35 @@
 import { useState } from 'react';
 import {
   Blok, Fajfka, Hlavicka, Obrazovka, Poznamka, Popisek, RadekHrace,
-  Rostouci, Stitek, Tlacitko, Veta, Znacka, Zpet,
+  Rostouci, Stitek, Tlacitko, TlacitkoOpatrne, Veta, Znacka, Zpet, useNizkyDisplej,
 } from '../ui/primitives';
 import { MAX_HRACU, MIN_HRACU, sestavaPro } from '../game/rules';
 import { ABECEDA_KODU, DELKA_KODU } from '../game/kod';
 import { jeDivokaSestava } from '../game/rules';
-import { stitekNapisu, zaznamenat } from '../ui/telemetrie';
+import { zaznamenat } from '../ui/telemetrie';
 
 // ---------------------------------------------------------------- úvod
 
-export function Uvod({ siteDostupna, chyba, rozehrana, onPokracovat, onZalozit, onPripojit, onHotSeat, onPravidla }: {
+export function Uvod({ siteDostupna, chyba, rozehrana, onPokracovat, onZahodit, onZalozit, onPripojit, onHotSeat, onPravidla }: {
   siteDostupna: boolean; chyba?: string | null;
   /** V telefonu leží rozehraná partie. Nabídne se dřív než cokoliv nového. */
   rozehrana?: string | null;
   onPokracovat?: () => void;
+  /** Rozehraná partie, která se nedá dohrát, nemá viset navěky. */
+  onZahodit?: () => void;
   onZalozit: () => void; onPripojit: () => void; onHotSeat: () => void; onPravidla: () => void;
 }) {
+  // Nízký displej s nabídkou rozehrané partie: značka se schová a tlačítka
+  // sníží, jinak by se nadpis ořízl. Úvod se neposouvá jako ostatní obrazovky.
+  const nizky = useNizkyDisplej();
+  const tesno = nizky && Boolean(rozehrana);
+  const vyska = tesno ? 62 : 78;
   return (
     <Obrazovka rez>
-      <div style={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 24 }}>
-        <Znacka velikost={96} />
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontFamily: 'var(--font-nadpis)', fontSize: 72, lineHeight: 0.88, letterSpacing: '0.04em', color: 'var(--ocel-50)' }}>
+      <div style={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: tesno ? 12 : 24 }}>
+        {!tesno && <Znacka velikost={nizky ? 72 : 96} />}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: tesno ? 6 : 10 }}>
+          <span style={{ fontFamily: 'var(--font-nadpis)', fontSize: tesno ? 50 : 72, lineHeight: 0.88, letterSpacing: '0.04em', color: 'var(--ocel-50)' }}>
             ŠICHTA
           </span>
           <Stitek tlumeny>PRACANTI VS. SABOTÉŘI</Stitek>
@@ -33,17 +40,20 @@ export function Uvod({ siteDostupna, chyba, rozehrana, onPokracovat, onZalozit, 
 
       {rozehrana && onPokracovat && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <Tlacitko druh="hlavni" onClick={onPokracovat} vyska={78} male>POKRAČOVAT V ROZEHRANÉ</Tlacitko>
+          <Tlacitko druh="hlavni" onClick={onPokracovat} vyska={vyska} male>POKRAČOVAT V ROZEHRANÉ</Tlacitko>
           <Poznamka>{rozehrana}</Poznamka>
+          {onZahodit && (
+            <TlacitkoOpatrne vyska={tesno ? 40 : 46} onClick={onZahodit} potvrzeni="OPRAVDU ZAHODIT?">ZAHODIT ROZEHRANOU</TlacitkoOpatrne>
+          )}
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: tesno ? 8 : 11 }}>
         {siteDostupna ? (
           <>
-            <Tlacitko druh="hlavni" onClick={onZalozit} vyska={78}>ZALOŽIT ŠICHTU</Tlacitko>
-            <Tlacitko onClick={onPripojit} vyska={78}>PŘIPOJIT SE</Tlacitko>
-            <Tlacitko druh="tichy" onClick={onHotSeat} vyska={58} male>JEN NA JEDNOM TELEFONU</Tlacitko>
+            <Tlacitko druh="hlavni" onClick={onZalozit} vyska={vyska}>ZALOŽIT ŠICHTU</Tlacitko>
+            <Tlacitko onClick={onPripojit} vyska={vyska}>PŘIPOJIT SE</Tlacitko>
+            <Tlacitko druh="tichy" onClick={onHotSeat} vyska={tesno ? 48 : 58} male>JEN NA JEDNOM TELEFONU</Tlacitko>
           </>
         ) : (
           <>
@@ -138,17 +148,21 @@ export function Prezdivka({ vychozi, onHotovo, onZpet, onPravidla }: {
 export interface HracVSatne { id: string; jmeno: string; zakladatel: boolean; pripojeny: boolean }
 
 export function Satna({
-  kod, odkaz, hraci, jaId, jsemZakladatel, onZacit, onNastaveni, onNastaveniHry, onPravidla, onVyhodit, popisekAkce = 'NASTAVENÍ',
+  kod, odkaz, hraci, jaId, jsemZakladatel, onZacit, onPridat, onNastaveniHry, onPravidla, onVyhodit,
 }: {
-  kod: string; odkaz?: string | null; hraci: HracVSatne[]; jaId: string | null; jsemZakladatel: boolean;
-  onZacit: () => void; onNastaveni?: () => void; onNastaveniHry: () => void; onPravidla: () => void;
+  /** Kód k nahlášení. null na jednom telefonu, kde ho není komu posílat. */
+  kod: string | null; odkaz?: string | null; hraci: HracVSatne[]; jaId: string | null; jsemZakladatel: boolean;
+  onZacit: () => void;
+  /** Jen na jednom telefonu: další hráč se přidává tady, ne přes odkaz. */
+  onPridat?: () => void;
+  onNastaveniHry: () => void; onPravidla: () => void;
   /** Jen zakladatel a jen online: vyhodit hráče, který tu nemá co dělat. */
   onVyhodit?: (id: string) => void;
-  popisekAkce?: string;
 }) {
   const pritomni = hraci.filter((h) => h.pripojeny);
   const dost = pritomni.length >= MIN_HRACU;
   const sestava = dost ? sestavaPro(pritomni.length) : null;
+  const muzePridat = Boolean(onPridat) && hraci.length < MAX_HRACU;
   const [poslano, setPoslano] = useState(false);
 
   // Kód jde přečíst nahlas, ale odkaz je rychlejší. Systémové sdílení má
@@ -167,45 +181,51 @@ export function Satna({
     }
   };
 
+  const odkazVHlavicce = (barva: string) => ({
+    border: 'none', background: 'none', padding: '8px 0', fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', color: barva,
+  } as const);
+
   return (
     <Obrazovka>
       <Hlavicka
         nadpis="ŠATNA"
         vpravo={
           <span style={{ display: 'flex', gap: 14 }}>
-            <button type="button" data-mereni="pravidla" onClick={onPravidla} style={{ border: 'none', background: 'none', padding: '8px 0', fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--text-tlum)' }}>
+            <button type="button" data-mereni="pravidla" onClick={onPravidla} style={odkazVHlavicce('var(--text-tlum)')}>
               PRAVIDLA
             </button>
-            {jsemZakladatel && onNastaveni && (
-              <button type="button" data-mereni={stitekNapisu(popisekAkce)} onClick={onNastaveni} style={{ border: 'none', background: 'none', padding: '8px 0', fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--text-akcent)' }}>
-                {popisekAkce}
+            {jsemZakladatel && (
+              <button type="button" data-mereni="nastaveni" onClick={onNastaveniHry} style={odkazVHlavicce('var(--text-akcent)')}>
+                NASTAVENÍ
               </button>
             )}
           </span>
         }
       />
 
-      <Blok silny style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-          <Popisek>KÓD ŠICHTY</Popisek>
-          <span style={{ fontFamily: 'var(--font-nadpis)', fontSize: 40, lineHeight: 1, letterSpacing: '0.12em', color: 'var(--text-akcent)' }}>
-            {kod}
-          </span>
-        </div>
-        {odkaz && (
-          <button
-            type="button" data-mereni="sdilet" onClick={poslatOdkaz}
-            style={{
-              flexShrink: 0, minHeight: 52, padding: '0 15px',
-              border: '3px solid var(--ram)', background: 'var(--blok)',
-              fontFamily: 'var(--font-nadpis)', fontSize: 14, letterSpacing: '0.1em',
-              color: poslano ? 'var(--patina-400)' : 'var(--text)',
-            }}
-          >
-            {poslano ? 'HOTOVO' : 'POSLAT'}
-          </button>
-        )}
-      </Blok>
+      {kod && (
+        <Blok silny style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}>
+            <Popisek>KÓD ŠICHTY</Popisek>
+            <span style={{ fontFamily: 'var(--font-nadpis)', fontSize: 34, lineHeight: 1, letterSpacing: '0.12em', color: 'var(--text-akcent)' }}>
+              {kod}
+            </span>
+          </div>
+          {odkaz && (
+            <button
+              type="button" data-mereni="sdilet" onClick={poslatOdkaz}
+              style={{
+                flexShrink: 0, minHeight: 48, padding: '0 15px',
+                border: '3px solid var(--ram)', background: 'var(--blok)',
+                fontFamily: 'var(--font-nadpis)', fontSize: 14, letterSpacing: '0.1em',
+                color: poslano ? 'var(--patina-400)' : 'var(--text)',
+              }}
+            >
+              {poslano ? 'HOTOVO' : 'POSLAT'}
+            </button>
+          )}
+        </Blok>
+      )}
 
       <Blok style={{ flexGrow: 1, minHeight: 0, overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -234,7 +254,19 @@ export function Satna({
               }
             />
           ))}
-          {!dost && <RadekHrace jmeno="ČEKÁ SE" stav="cekame" />}
+          {muzePridat ? (
+            // Na jednom telefonu se další hráč přidává rovnou v seznamu, kde ho oko hledá.
+            <button
+              type="button" data-mereni="pridat-hrace" onClick={onPridat}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 52, textAlign: 'left',
+                border: 'none', borderLeft: '4px dashed var(--rez-400)', background: 'transparent', padding: '11px 13px',
+                fontFamily: 'var(--font-nadpis)', fontSize: 'var(--t-name-size)', letterSpacing: 'var(--t-name-ls)', color: 'var(--text-akcent)',
+              }}
+            >
+              + PŘIDAT HRÁČE
+            </button>
+          ) : !dost && <RadekHrace jmeno="ČEKÁ SE" stav="cekame" />}
         </div>
       </Blok>
 
@@ -246,7 +278,7 @@ export function Satna({
       )}
 
       {sestava && (
-        <Blok style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Blok style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
           <span style={{ fontSize: 'var(--t-meta-size)', fontWeight: 600, color: 'var(--text)' }}>
             {pritomni.length} hráčů
           </span>
@@ -256,15 +288,15 @@ export function Satna({
         </Blok>
       )}
 
-      {jsemZakladatel ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-          <Tlacitko druh={dost ? 'hlavni' : 'tichy'} vyska={82} onClick={dost ? onZacit : undefined}>
-            {dost ? 'ZAČÍT ŠICHTU' : `CHYBÍ ${MIN_HRACU - pritomni.length}`}
-          </Tlacitko>
-          <Tlacitko druh="tichy" vyska={56} onClick={onNastaveniHry}>NASTAVENÍ HRY</Tlacitko>
-        </div>
-      ) : (
+      {/* Jedno tlačítko dole: začít, nebo to, co začátku brání. */}
+      {!jsemZakladatel ? (
         <Veta>Až vás bude dost, zakladatel šichtu spustí.</Veta>
+      ) : dost ? (
+        <Tlacitko druh="hlavni" vyska={72} onClick={onZacit}>ZAČÍT ŠICHTU</Tlacitko>
+      ) : muzePridat ? (
+        <Tlacitko druh="hlavni" vyska={72} onClick={onPridat}>PŘIDAT HRÁČE</Tlacitko>
+      ) : (
+        <Tlacitko druh="tichy" vyska={72}>{`CHYBÍ ${MIN_HRACU - pritomni.length}`}</Tlacitko>
       )}
     </Obrazovka>
   );

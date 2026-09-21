@@ -474,7 +474,7 @@ export class Mistnost {
     }
     if (s.faze === 'konec') {
       this.zapsat('partie_konec', {
-        detail: s.vitez ?? '', detail2: s.duvodKonce ?? '',
+        detail: s.vitez ?? 'nikdo', detail2: s.duvodKonce ?? '',
         hodnota: this.startPartie ? ted - this.startPartie : 0,
         hodnota2: s.hraci.filter((h) => !h.zivy).length,
       });

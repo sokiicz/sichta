@@ -61,7 +61,7 @@ netknutý, ostatní projekty o tomhle nevědí. **Nepouštěj `npx wrangler` př
 vždycky přes `npm run cf:*`.
 
 ## Nástroje
-- `npm test` — testy herní logiky (112 testů, hrají celé partie)
+- `npm test` — testy herní logiky (114 testů, hrají celé partie)
 - `npm run test:online -- <adresa>` — integrační test proti workeru (lokálně
   `http://localhost:8787` s běžícím `cf:dev`, nebo živá adresa). Bere přenosný
   Node 22 přes `scripts/node22.mjs`, systémový Node 20 nemá `WebSocket`

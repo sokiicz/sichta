@@ -428,6 +428,10 @@ export function reducer(s: Stav, a: Akce, seed: number): Stav {
       };
     }
 
+    case 'UKONCIT':
+      if (s.faze === 'satna' || s.faze === 'konec') return s;
+      return { ...s, faze: 'konec', vitez: null, duvodKonce: 'Konec bez rozhodnutí. Šichtu nešlo dohrát.', pauza: null, konecFaze: null };
+
     case 'PRIPRAVEN': {
       if (s.faze !== 'rozdani') return s;
       if (!s.hraci.some((h) => h.id === a.id)) return s;

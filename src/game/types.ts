@@ -225,4 +225,6 @@ export type Akce =
   | { typ: 'PRIPOJIL_SE'; id: HracId }
   | { typ: 'HRAT_BEZ_NEJ'; id: HracId }
   /** Stejná parta znovu: zpátky do šatny, role se rozdají nanovo. */
-  | { typ: 'ZNOVU' };
+  | { typ: 'ZNOVU' }
+  /** Konec bez vítěze, když se nedá dohrát. Role se odhalí jako po každém konci. */
+  | { typ: 'UKONCIT' };

@@ -165,7 +165,7 @@ export function TvaRole({
         vyska={74}
         onClick={videl && !pripraven ? onPripraven : undefined}
       >
-        {pripraven ? `ČEKÁ SE NA OSTATNÍ · ${pripravenych} / ${pocetHracu}` : 'JSEM PŘIPRAVEN'}
+        {pripraven ? `ČEKÁ SE NA OSTATNÍ · ${pripravenych} / ${pocetHracu}` : 'JDU NA TO'}
       </Tlacitko>
     </Obrazovka>
   );

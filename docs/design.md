@@ -287,6 +287,7 @@ Model z Blood on the Clocktower, léty prověřený. Únik informací ("já jsem
 
 - **Pracanti vyhrají**, jakmile je vyhoštěn poslední sabotér.
 - **Sabotéři vyhrají**, když doběhne limit šicht a aspoň jeden sabotér žije — **nebo** když nezůstane žádný živý pracant.
+- **Předčasný konec bez vítěze**, když se nedá dohrát (někdo odešel od stolu, došel čas). Vyvolá ho jen zakladatel, na dvě ťuknutí, z pauzy nebo z přehledu. Role se odhalí jako po každém konci a parta může jít rovnou na další partii.
 
 **Žádné pravidlo parity.** Původní návrh (sabotéři vyhrají při rovnosti živých) končil hru po dvou kolech: dvě špatná vyhoštění + dvě vraždy = 2v2 a konec. Dvě diskuze na celou partii.
 

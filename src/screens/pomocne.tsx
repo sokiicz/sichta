@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Blok, Hlavicka, Obrazovka, Poznamka, Popisek, Rostouci,
-  Stitek, Tlacitko, Veta, Volba, Zpet,
+  Stitek, Tlacitko, TlacitkoOpatrne, Veta, Volba, Zpet,
 } from '../ui/primitives';
 import { prepnoutZvuk, zvukZapnuty } from '../ui/zvuk';
 import { zaznamenat } from '../ui/telemetrie';
@@ -70,7 +70,7 @@ const cas = (ms: number) => {
  * kterého fáze nemůže skončit. Zakladatel může rozhodnout, že se hraje bez
  * něj: jeho volba pak propadne, jako by nic neodevzdal.
  */
-export function Pauza({ kvuli, duvod, faze, zbyvaMs, odMs, posunHodin, jsemZakladatel, onHratBezNej }: {
+export function Pauza({ kvuli, duvod, faze, zbyvaMs, odMs, posunHodin, jsemZakladatel, onHratBezNej, onUkoncit, onOdejit }: {
   kvuli: string; duvod: string; faze: string;
   /** Kolik ms fáze zbývalo, když se zastavila. null na jednom telefonu. */
   zbyvaMs: number | null;
@@ -78,6 +78,8 @@ export function Pauza({ kvuli, duvod, faze, zbyvaMs, odMs, posunHodin, jsemZakla
   odMs: number | null;
   posunHodin: number;
   jsemZakladatel: boolean; onHratBezNej: () => void;
+  /** Když se nedá dohrát: zakladatel ukončí pro všechny, ostatní odejdou. */
+  onUkoncit?: () => void; onOdejit?: () => void;
 }) {
   const [ted, setTed] = useState(Date.now());
   useEffect(() => {
@@ -94,7 +96,7 @@ export function Pauza({ kvuli, duvod, faze, zbyvaMs, odMs, posunHodin, jsemZakla
         <Hlavicka nadpis="PAUZA" akcent vpravo={<Stitek tlumeny>{faze.toUpperCase()}</Stitek>} />
       </div>
 
-      <div style={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 26 }}>
+      <div style={{ flexGrow: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'safe center', alignItems: 'center', gap: 26 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
           <svg width="42" height="48" viewBox="0 0 24 28" fill="none" aria-hidden="true">
             <rect x="3" y="3" width="6" height="22" fill="var(--rez-400)" />
@@ -134,9 +136,17 @@ export function Pauza({ kvuli, duvod, faze, zbyvaMs, odMs, posunHodin, jsemZakla
           <span style={{ fontSize: 'var(--t-meta-size)', fontWeight: 600, lineHeight: 1.5, color: 'var(--text-tlum)' }}>
             Hrát bez něj znamená, že jeho volba propadne, jako by nic neodevzdal. Jakmile se vrátí, hraje zase normálně.
           </span>
+          {onUkoncit && (
+            <TlacitkoOpatrne onClick={onUkoncit} potvrzeni="OPRAVDU UKONČIT PRO VŠECHNY?">UKONČIT ŠICHTU</TlacitkoOpatrne>
+          )}
         </div>
       ) : (
-        <Poznamka>Zakladatel rozhodne, jestli se čeká dál, nebo se hraje bez něj.</Poznamka>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Poznamka>Zakladatel rozhodne, jestli se čeká dál, nebo se hraje bez něj.</Poznamka>
+          {onOdejit && (
+            <TlacitkoOpatrne onClick={onOdejit} potvrzeni="OPRAVDU ODEJÍT?">ODEJÍT ZE ŠICHTY</TlacitkoOpatrne>
+          )}
+        </div>
       )}
     </Obrazovka>
   );

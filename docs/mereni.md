@@ -96,6 +96,9 @@ změnit i dotazy níž.
 | `volba_rezimu` | `zalozit`, `pripojit`, `hotseat`; detail2 `misto_rozehrane` | |
 | `pokracovat` | `hotseat` / `online`; detail2 fáze | |
 | `znovu_klik` | `online` / `hotseat` | |
+| `ukoncit` | `online`, `hotseat`, `pauza` | |
+| `odejit` | `prehled`, `pauza` | |
+| `zahodit_rozehranou` | `hotseat` / `online` | |
 | `rage_klik` | prvek (`button:NOMINOVAT`, `div:`) | poloha v % šířky; hodnota2 v % výšky |
 | `mrtvy_klik` | prvek mimo ovládání (`div:`, `span:`) | poloha |
 | `klik_bez_efektu` | štítek tlačítka bez akce (`DO ŠATNY`) | |

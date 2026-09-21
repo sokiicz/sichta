@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { vibrovat, VZOR } from './zvuk';
 import { stitekNapisu, zaznamenat } from './telemetrie';
@@ -192,6 +192,22 @@ export function Blok({
   );
 }
 
+/**
+ * Nízký displej: starší telefony a prohlížeče s velkou lištou mají pod
+ * 700 px. Obrazovky se neposouvají, tak se místo toho zmenší, co jde.
+ */
+export function useNizkyDisplej(hranice = 700): boolean {
+  const dotaz = `(max-height: ${hranice - 1}px)`;
+  const [nizky, setNizky] = useState(() => typeof window !== 'undefined' && window.matchMedia(dotaz).matches);
+  useEffect(() => {
+    const m = window.matchMedia(dotaz);
+    const na = () => setNizky(m.matches);
+    m.addEventListener('change', na);
+    return () => m.removeEventListener('change', na);
+  }, [dotaz]);
+  return nizky;
+}
+
 /** Vysvětlivka u levé hrany. Nese tón hry, ne instrukce k ovládání. */
 export function Poznamka({ children, varovna }: { children: ReactNode; varovna?: boolean }) {
   return (
@@ -267,6 +283,32 @@ export function Tlacitko({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * Nevratná akce na dvě ťuknutí. První ťuknutí přepne nápis na otázku, druhé
+ * do pěti vteřin ji provede. Bez dialogu: ten by na telefonu vypadal jako
+ * chyba prohlížeče.
+ */
+export function TlacitkoOpatrne({
+  children, potvrzeni = 'OPRAVDU? ŤUKNI ZNOVU', onClick, vyska = 52, druh = 'tichy',
+}: {
+  children: ReactNode; potvrzeni?: string; onClick: () => void; vyska?: number | string; druh?: Druh;
+}) {
+  const [jistota, setJistota] = useState(false);
+  useEffect(() => {
+    if (!jistota) return;
+    const t = setTimeout(() => setJistota(false), 5000);
+    return () => clearTimeout(t);
+  }, [jistota]);
+  return (
+    <Tlacitko
+      druh={jistota ? 'hlavni' : druh} vyska={vyska} male
+      onClick={() => { if (jistota) { setJistota(false); onClick(); } else setJistota(true); }}
+    >
+      {jistota ? potvrzeni : children}
+    </Tlacitko>
   );
 }
 

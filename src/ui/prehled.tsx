@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Popisek, Tlacitko } from './primitives';
+import { Popisek, Tlacitko, TlacitkoOpatrne } from './primitives';
 import { zaznamenat } from './telemetrie';
 import { OdkrytiRole } from '../screens/role';
 import { SeznamKol, type KoloPrehled } from '../screens/konec';
@@ -23,20 +23,30 @@ export interface DataPrehledu {
   pocetSaboteru: number;
 }
 
+/** Cesta ven, když se nedá dohrát. Ukončit pro všechny, nebo odejít sám. */
+export interface Odchod {
+  popis: string;
+  potvrzeni: string;
+  onClick: () => void;
+}
+
 interface Kontext {
   /** null znamená, že se přehled teď nemá nabízet vůbec. */
   data: DataPrehledu | null;
   zamceno: boolean;
+  odchod: Odchod | null;
 }
 
-const PrehledCtx = createContext<Kontext>({ data: null, zamceno: false });
+const PrehledCtx = createContext<Kontext>({ data: null, zamceno: false, odchod: null });
 
-export function PoskytniPrehled({ data, zamceno, children }: { data: DataPrehledu | null; zamceno: boolean; children: ReactNode }) {
-  return <PrehledCtx.Provider value={{ data, zamceno }}>{children}</PrehledCtx.Provider>;
+export function PoskytniPrehled({ data, zamceno, odchod = null, children }: {
+  data: DataPrehledu | null; zamceno: boolean; odchod?: Odchod | null; children: ReactNode;
+}) {
+  return <PrehledCtx.Provider value={{ data, zamceno, odchod }}>{children}</PrehledCtx.Provider>;
 }
 
 export function Prehled() {
-  const { data, zamceno } = useContext(PrehledCtx);
+  const { data, zamceno, odchod } = useContext(PrehledCtx);
   const [otevreno, setOtevreno] = useState(false);
 
   // Když se přehled zamkne nebo změní držitel telefonu, zavře se.
@@ -97,6 +107,15 @@ export function Prehled() {
             jsemPredak={data.jsemPredak} pocetSaboteru={data.pocetSaboteru}
           />
         </div>
+
+        {odchod && (
+          <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Popisek>KDYŽ SE NEDÁ DOHRÁT</Popisek>
+            <TlacitkoOpatrne onClick={() => { setOtevreno(false); odchod.onClick(); }} potvrzeni={odchod.potvrzeni}>
+              {odchod.popis}
+            </TlacitkoOpatrne>
+          </div>
+        )}
       </div>
 
       <Tlacitko druh="hlavni" vyska={62} onClick={() => setOtevreno(false)}>ZPĚT DO HRY</Tlacitko>

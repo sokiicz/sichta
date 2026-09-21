@@ -467,6 +467,25 @@ describe('konec hry', () => {
   });
 });
 
+describe('předčasný konec', () => {
+  it('ukončení dá konec bez vítěze, znovu pak vrátí do šatny', () => {
+    let s = rozehrat(6);
+    s = posli(s, { typ: 'UKONCIT' });
+    expect(s.faze).toBe('konec');
+    expect(s.vitez).toBeNull();
+    expect(s.pauza).toBeNull();
+    expect(s.duvodKonce).toContain('dohrát');
+    expect(posli(s, { typ: 'ZNOVU' }).faze).toBe('satna');
+  });
+
+  it('v šatně a po konci není co ukončit', () => {
+    const satna = prazdnyStav();
+    expect(posli(satna, { typ: 'UKONCIT' })).toBe(satna);
+    const konec = posli(rozehrat(6), { typ: 'UKONCIT' });
+    expect(posli(konec, { typ: 'UKONCIT' })).toBe(konec);
+  });
+});
+
 describe('pauza při odpojení', () => {
   it('odpojení hráče, na kterého se čeká, zastaví postup fází', () => {
     let s = doFaze(7, 'nominace');

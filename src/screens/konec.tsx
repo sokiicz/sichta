@@ -8,16 +8,17 @@ import type { Role, Smena, Tym } from '../game/types';
 
 /** Kdo vyhrál. Žádná jména sabotérů, ta přijdou až na další obrazovce. */
 export function Konec({ vitez, duvod, sicht, padlo, stinu, onOdhalit }: {
-  vitez: Tym; duvod: string; sicht: number; padlo: number; stinu: number; onOdhalit: () => void;
+  /** null je předčasný konec: nikdo nevyhrál, role se odhalí stejně. */
+  vitez: Tym | null; duvod: string; sicht: number; padlo: number; stinu: number; onOdhalit: () => void;
 }) {
   return (
     <Obrazovka tmava rez>
       <div style={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 22, textAlign: 'center' }}>
         <Znacka velikost={76} />
         <div>
-          <Popisek>VYHRÁVAJÍ</Popisek>
+          <Popisek>{vitez ? 'VYHRÁVAJÍ' : 'KONEC ŠICHTY'}</Popisek>
           <div style={{ marginTop: 10, fontFamily: 'var(--font-nadpis)', fontSize: 66, lineHeight: 0.9, letterSpacing: '0.02em', color: 'var(--text-akcent)', animation: 'vyjet 320ms ease-out' }}>
-            {vitez === 'pracanti' ? 'PRACANTI' : 'SABOTÉŘI'}
+            {vitez === 'pracanti' ? 'PRACANTI' : vitez === 'saboteri' ? 'SABOTÉŘI' : 'BEZ VÍTĚZE'}
           </div>
         </div>
         <Blok silny style={{ maxWidth: 300 }}>
