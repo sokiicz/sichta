@@ -112,6 +112,8 @@ export interface Kolo {
    */
   beznominace: HracId[];
   zdrzeliSe: HracId[];
+  /** Kdo v radě neodevzdal nic, ani hlas, ani zdržení. Zapisuje se při vyhodnocení. */
+  nehlasovali: HracId[];
 }
 
 /**

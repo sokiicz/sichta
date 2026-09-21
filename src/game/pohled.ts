@@ -39,6 +39,9 @@ export interface KoloVerejne {
   tma: boolean;
   /** null pod tmou: hlasy zůstávají zakryté až do konce hry. */
   hlasy: HlasVerejny[] | null;
+  /** Kdo se v radě zdržel a kdo neodevzdal nic. Pod tmou prázdné. */
+  zdrzeliSe: HracId[];
+  nehlasovali: HracId[];
 }
 
 export interface Pohled {
@@ -97,6 +100,9 @@ export interface Pohled {
     /** Kolik nominací kdo dostal. Až po uzavření nominací, do té doby null. */
     nominaci: Record<HracId, number> | null;
     hlasy: HlasVerejny[];
+    /** Kdo se v radě zdržel a kdo neodevzdal nic. Až po odhalení hlasů, pod tmou prázdné. */
+    zdrzeliSe: HracId[];
+    nehlasovali: HracId[];
     vyhosteny: HracId | null;
     roleVyhosteneho: Role | null;
     obet: HracId | null;
@@ -106,8 +112,12 @@ export interface Pohled {
     imunni: HracId | null;
     /** Bude nejbližší rada potmě. Veřejné od rána. */
     tma: boolean;
-    /** Kdo už v téhle fázi odevzdal. Jen kolik a kdo, nikdy co. */
+    /**
+     * Kdo už v téhle fázi odevzdal. Jen kolik a kdo, nikdy co. V noci jen
+     * kolik: jména by prozradila, kdo je poslední, a poslední bývá předák.
+     */
     odevzdali: HracId[];
+    odevzdalo: number;
     /** Kdo chce utnout rozpravu. Veřejné, ať je vidět tlak. */
     chtejiDal: HracId[];
     /** Kolik jich musí chtít, aby se rozprava utnula. */
@@ -183,6 +193,9 @@ function koloVerejne(s: Stav, k: Kolo, bezici: boolean): KoloVerejne {
     imunni: !bezici || PO_NOMINACI.has(s.faze) ? k.imunni : null,
     tma: !bezici || PO_NOMINACI.has(s.faze) ? k.tma : false,
     hlasy: k.tma && !konecHry ? null : poRade ? hlasyKola(k) : [],
+    // `?? []` kvůli partiím rozehraným před přidáním těchhle polí
+    zdrzeliSe: (k.tma && !konecHry) || !poRade ? [] : k.zdrzeliSe ?? [],
+    nehlasovali: (k.tma && !konecHry) || !poRade ? [] : k.nehlasovali ?? [],
   };
 }
 
@@ -263,13 +276,16 @@ export function pohledPro(s: Stav, jaId: HracId): Pohled {
       nominaci: k && PO_NOMINACI.has(s.faze) ? Object.fromEntries(spocitatNominace(k)) : null,
       // hlasy až po odhalení, pod tmou vůbec; na konci hry všechno
       hlasy: k && (konec || (PO_RADE.has(s.faze) && !k.tma)) ? hlasyKola(k) : [],
+      zdrzeliSe: k && (konec || (PO_RADE.has(s.faze) && !k.tma)) ? k.zdrzeliSe ?? [] : [],
+      nehlasovali: k && (konec || (PO_RADE.has(s.faze) && !k.tma)) ? k.nehlasovali ?? [] : [],
       vyhosteny: PO_RADE.has(s.faze) || konec ? vyhosteny : null,
       roleVyhosteneho: ukazatRoli ? (s.role[vyhosteny] ?? null) : null,
       obet: s.faze === 'rano' || konec ? k?.obet ?? null : null,
       odmena,
       imunni,
       tma,
-      odevzdali,
+      odevzdali: noc ? [] : odevzdali,
+      odevzdalo: odevzdali.length,
       chtejiDal: k?.chtejiDal ?? [],
       potrebaProSkok: potrebaProSkok(s),
       zbyvaSaboteru: zbyvaSaboteruVerejne(s),

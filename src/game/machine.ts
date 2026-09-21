@@ -174,6 +174,7 @@ export function noveKolo(cislo: number): Kolo {
     chtejiDal: [],
     beznominace: [],
     zdrzeliSe: [],
+    nehlasovali: [],
     nominace: {},
     kandidati: [],
     mluvi: 0,
@@ -306,9 +307,11 @@ function vyhodnotitRadu(s: Stav): Stav {
 
   // Hlas stínu se utratí použitím, ať už rada někoho poslala pryč, nebo ne.
   const utraceni = new Set(Object.keys(k.hlasyStinu));
+  const odevzdali = new Set(kdoOdevzdal(s));
+  const nehlasovali = kdoMaOdevzdat(s).filter((id) => !odevzdali.has(id));
   let dalsi: Stav = {
     ...s,
-    aktualni: { ...k, vyhosteny },
+    aktualni: { ...k, vyhosteny, nehlasovali },
     hraci: s.hraci.map((h) => (utraceni.has(h.id) ? { ...h, hlasStinuUtracen: true } : h)),
   };
   if (vyhosteny) dalsi = odebrat(dalsi, vyhosteny);

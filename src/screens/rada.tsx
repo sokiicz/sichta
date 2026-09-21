@@ -93,19 +93,21 @@ export function Rozprava({ sekundy, celkem, hlasovani, onDal, onChciDal }: {
 // ---------------------------------------------------------------- nominace
 
 /**
- * Nominace. **Nominovat nikoho je plnohodnotný tah**, ne zapomenutí. Bez toho
- * by musel každý někoho navrhnout, což zaprvé nutí lidi střílet naslepo a
- * zadruhé rozbíjí šeptandu: věta "v kole 2 nominoval právě jeden sabotér"
- * nic neříká, když museli nominovat všichni.
+ * Nominace. Jedno tlačítko: s vybraným hráčem nominuje, bez výběru
+ * nenominuje nikoho. Ťuknutí na vybraného ho zase odznačí. Nominovat nikoho
+ * je plnohodnotný tah, ne zapomenutí: bez toho by musel každý někoho
+ * navrhnout, což nutí lidi střílet naslepo a rozbíjí šeptandu.
  */
-export function Nominace({ kdo, jaId, vybrany, sekundy, nenominuju, imunni, onVybrat, onNikoho, onPotvrdit }: {
+export function Nominace({ kdo, jaId, vybrany, sekundy, odevzdano, imunni, onVybrat, onPotvrdit }: {
   kdo: Kdo[]; jaId: string; vybrany: string | null; sekundy: number | null;
-  nenominuju: boolean;
+  /** Co server už má: id nominovaného, 'nikoho', nebo null před odevzdáním. */
+  odevzdano: string | null;
   /** Kdo má z noci imunitu. Nominovat ho jde, do rady se ale nedostane. */
   imunni: string | null;
-  onVybrat: (id: string) => void; onNikoho: () => void; onPotvrdit: () => void;
+  onVybrat: (id: string | null) => void; onPotvrdit: () => void;
 }) {
   const cil = kdo.find((k) => k.id === vybrany);
+  const sedi = odevzdano !== null && (cil ? odevzdano === cil.id : odevzdano === 'nikoho');
   return (
     <Obrazovka>
       <Hlavicka nadpis="NOMINACE" vpravo={<Odpocet sekundy={sekundy} />} />
@@ -115,7 +117,7 @@ export function Nominace({ kdo, jaId, vybrany, sekundy, nenominuju, imunni, onVy
         {kdo.filter((k) => k.zivy).map((k) => (
           <Volba
             key={k.id} zvoleno={k.id === vybrany} vypnuto={k.id === jaId || k.id === imunni}
-            onClick={() => onVybrat(k.id)}
+            onClick={() => onVybrat(k.id === vybrany ? null : k.id)}
             vpravo={k.id === jaId ? <Stitek tlumeny>TO JSI TY</Stitek> : k.id === imunni ? <Stitek tlumeny>IMUNITA</Stitek> : undefined}
           >
             {k.jmeno.toUpperCase()}
@@ -128,18 +130,14 @@ export function Nominace({ kdo, jaId, vybrany, sekundy, nenominuju, imunni, onVy
         nenominuje nikdo, tohle kolo nikdo neodejde.
       </Poznamka>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-        <Tlacitko
-          druh={cil ? 'hlavni' : nenominuju ? 'vedlejsi' : 'tichy'}
-          vyska={78}
-          onClick={cil || nenominuju ? onPotvrdit : undefined}
-        >
-          {cil ? `NOMINOVAT: ${cil.jmeno.toUpperCase()}` : nenominuju ? 'POTVRDIT' : 'VYBER JEDNOHO'}
-        </Tlacitko>
-        <Tlacitko druh={nenominuju ? 'hlavni' : 'tichy'} vyska={58} onClick={onNikoho}>
-          {nenominuju ? 'NENOMINUJU NIKOHO' : 'NIKOHO NENOMINOVAT'}
-        </Tlacitko>
-      </div>
+      <Tlacitko druh={sedi ? 'vedlejsi' : 'hlavni'} vyska={78} onClick={onPotvrdit}>
+        {cil ? `NOMINOVAT: ${cil.jmeno.toUpperCase()}` : 'NENOMINOVAT NIKOHO'}
+      </Tlacitko>
+      {odevzdano !== null && (
+        <div style={{ textAlign: 'center', fontSize: 'var(--t-meta-size)', fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-tlum)' }}>
+          {sedi ? 'Odevzdáno. Změnit to jde, dokud běží čas.' : 'Ještě jsi to nepotvrdil.'}
+        </div>
+      )}
     </Obrazovka>
   );
 }
@@ -236,16 +234,21 @@ export function PosledniSlovo({ mluvi, poradi, celkem, dalsi, sekundy, podil, on
 // ---------------------------------------------------------------- rada
 
 /**
- * Rada. Zdržet se je taky tah: vyhoštění chce nadpoloviční většinu odevzdaných
- * hlasů a nejméně dva, jinak nikdo neodchází. Kolo bez vyhoštění je legitimní
- * výsledek. Stín, který se zdrží, svůj jediný hlas neutratí.
+ * Rada. Jedno tlačítko: s vybraným kandidátem odevzdá hlas, bez výběru se
+ * zdrží. Ťuknutí na vybraného ho odznačí. Vyhoštění chce nadpoloviční většinu
+ * odevzdaných hlasů a nejméně dva, jinak nikdo neodchází. Stín, který se
+ * zdrží, svůj jediný hlas neutratí.
  */
-export function Rada({ kandidati, vybrany, sekundy, jsemStin, hlasUtracen, zdrzelSe, onVybrat, onZdrzet, onPotvrdit }: {
+export function Rada({ kandidati, vybrany, sekundy, jsemStin, hlasUtracen, odevzdano, onVybrat, onPotvrdit }: {
   kandidati: Kdo[]; vybrany: string | null; sekundy: number | null;
-  jsemStin: boolean; hlasUtracen: boolean; zdrzelSe: boolean;
-  onVybrat: (id: string) => void; onZdrzet: () => void; onPotvrdit: () => void;
+  jsemStin: boolean; hlasUtracen: boolean;
+  /** Co server už má: id kandidáta, 'zdrzel', nebo null před odevzdáním. */
+  odevzdano: string | null;
+  onVybrat: (id: string | null) => void; onPotvrdit: () => void;
 }) {
   const muzeHlasovat = !jsemStin || !hlasUtracen;
+  const cil = kandidati.find((k) => k.id === vybrany);
+  const sedi = odevzdano !== null && (cil ? odevzdano === cil.id : odevzdano === 'zdrzel');
   return (
     <Obrazovka>
       <Hlavicka nadpis="RADA" vpravo={<Odpocet sekundy={sekundy} />} />
@@ -265,7 +268,7 @@ export function Rada({ kandidati, vybrany, sekundy, jsemStin, hlasUtracen, zdrze
           <Tlacitko
             key={k.id} vyska={128} zvoleno={k.id === vybrany}
             druh={muzeHlasovat ? 'vedlejsi' : 'tichy'}
-            onClick={muzeHlasovat ? () => onVybrat(k.id) : undefined}
+            onClick={muzeHlasovat ? () => onVybrat(k.id === vybrany ? null : k.id) : undefined}
           >
             {k.jmeno.toUpperCase()}
           </Tlacitko>
@@ -274,20 +277,22 @@ export function Rada({ kandidati, vybrany, sekundy, jsemStin, hlasUtracen, zdrze
 
       <Poznamka>Odchází jen ten, kdo má nadpoloviční většinu hlasů a aspoň dva. Zdržet se je taky odpověď.</Poznamka>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-        <Tlacitko
-          druh={(vybrany || zdrzelSe) && muzeHlasovat ? 'hlavni' : 'tichy'}
-          vyska={78}
-          onClick={(vybrany || zdrzelSe) && muzeHlasovat ? onPotvrdit : undefined}
-        >
-          {zdrzelSe && !vybrany ? 'POTVRDIT' : jsemStin ? 'UTRATIT HLAS STÍNU' : 'ODEVZDAT HLAS'}
-        </Tlacitko>
-        {muzeHlasovat && (
-          <Tlacitko druh={zdrzelSe ? 'hlavni' : 'tichy'} vyska={58} onClick={onZdrzet}>
-            {zdrzelSe ? 'ZDRŽUJU SE' : 'ZDRŽET SE HLASOVÁNÍ'}
+      {muzeHlasovat ? (
+        <>
+          <Tlacitko druh={sedi ? 'vedlejsi' : 'hlavni'} vyska={78} onClick={onPotvrdit}>
+            {cil
+              ? `${jsemStin ? 'UTRATIT HLAS STÍNU' : 'ODEVZDAT HLAS'}: ${cil.jmeno.toUpperCase()}`
+              : 'ZDRŽET SE HLASOVÁNÍ'}
           </Tlacitko>
-        )}
-      </div>
+          {odevzdano !== null && (
+            <div style={{ textAlign: 'center', fontSize: 'var(--t-meta-size)', fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-tlum)' }}>
+              {sedi ? 'Odevzdáno. Změnit to jde, dokud běží čas.' : 'Ještě jsi to nepotvrdil.'}
+            </div>
+          )}
+        </>
+      ) : (
+        <Tlacitko druh="tichy" vyska={78}>JEN SE DÍVÁŠ</Tlacitko>
+      )}
     </Obrazovka>
   );
 }
@@ -296,9 +301,13 @@ export function Rada({ kandidati, vybrany, sekundy, jsemStin, hlasUtracen, zdrze
 
 export interface Hlas { kdo: string; komu: string; stin?: boolean }
 
-export function Hlasy({ kandidati, hlasy, odkryto, tma, podil, onPreskocit }: {
+export function Hlasy({ kandidati, hlasy, zdrzeliSe, nehlasovali, odkryto, tma, podil, onPreskocit }: {
   kandidati: { id: string; jmeno: string; hlasu: number; vede: boolean }[];
-  hlasy: Hlas[]; odkryto: number; tma: boolean; podil: number; onPreskocit?: () => void;
+  hlasy: Hlas[];
+  /** Kdo se zdržel a kdo neodevzdal nic. Stíny označené. */
+  zdrzeliSe: { jmeno: string; stin: boolean }[];
+  nehlasovali: { jmeno: string; stin: boolean }[];
+  odkryto: number; tma: boolean; podil: number; onPreskocit?: () => void;
 }) {
   if (tma) {
     return (
@@ -314,6 +323,9 @@ export function Hlasy({ kandidati, hlasy, odkryto, tma, podil, onPreskocit }: {
       </Obrazovka>
     );
   }
+
+  const vseVenku = odkryto >= hlasy.length;
+  const jmena = (x: { jmeno: string; stin: boolean }[]) => x.map((h) => `${h.jmeno.toUpperCase()}${h.stin ? ' (stín)' : ''}`).join(', ');
 
   return (
     <Obrazovka>
@@ -367,10 +379,25 @@ export function Hlasy({ kandidati, hlasy, odkryto, tma, podil, onPreskocit }: {
           );
         })}
         {hlasy.length === 0 && <Poznamka>Nikdo nehlasoval. Dnes nikdo neodchází.</Poznamka>}
+
+        {vseVenku && (zdrzeliSe.length > 0 || nehlasovali.length > 0) && (
+          <div style={{ marginTop: 6, borderTop: '2px solid var(--ram-tlum)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6, animation: 'vyjet 220ms ease-out' }}>
+            {zdrzeliSe.length > 0 && (
+              <div style={{ fontSize: 'var(--t-meta-size)', color: 'var(--text)' }}>
+                <span style={{ fontWeight: 700, letterSpacing: '0.12em', color: 'var(--text-tlum)' }}>ZDRŽELI SE · </span>{jmena(zdrzeliSe)}
+              </div>
+            )}
+            {nehlasovali.length > 0 && (
+              <div style={{ fontSize: 'var(--t-meta-size)', color: 'var(--text)' }}>
+                <span style={{ fontWeight: 700, letterSpacing: '0.12em', color: 'var(--text-tlum)' }}>NEHLASOVALI · </span>{jmena(nehlasovali)}
+              </div>
+            )}
+          </div>
+        )}
       </Rostouci>
 
       <div style={{ fontSize: 'var(--t-meta-size)', fontWeight: 600, color: 'var(--text-tlum)', textAlign: 'center' }}>
-        {odkryto >= hlasy.length ? 'Všechno je venku.' : `Odkrývá se po jednom. Zbývá ${hlasy.length - odkryto}.`}
+        {vseVenku ? 'Všechno je venku.' : `Odkrývá se po jednom. Zbývá ${hlasy.length - odkryto}.`}
       </div>
 
       <Ukazatel podil={podil} onPreskocit={onPreskocit} />

@@ -154,7 +154,8 @@ export default function App() {
   const [stareSezeni, setStareSezeni] = useState<Sezeni | null>(null);
 
   const [prevzal, setPrevzal] = useState(false);
-  const [vyber, setVyber] = useState<string | null>(null);
+  /** undefined = zatím jsem nesáhl, bere se, co má server; null = výslovně nikdo. */
+  const [vyber, setVyber] = useState<string | null | undefined>(undefined);
   const [odmena, setOdmena] = useState<Odmena | null>(null);
   const [odkryto, setOdkryto] = useState(0);
 
@@ -170,7 +171,7 @@ export default function App() {
   useBdeni(jeOnline && krok === 'hra' && pohled !== null && pohled.faze !== 'konec');
 
   useEffect(() => {
-    setPrevzal(false); setVyber(null); setOdmena(null); setOdkryto(0);
+    setPrevzal(false); setVyber(undefined); setOdmena(null); setOdkryto(0);
   }, [pohled?.faze, pohled?.kolo, pohled?.stul.mluvi, naRade]);
 
   // Po "ještě jednou" se hra vrátí do šatny a obrazovky konce musí pryč.
@@ -397,6 +398,10 @@ export default function App() {
   /** Na jednom telefonu je soukromé jen to, co drží konkrétní hráč v ruce. */
   const soukrome = jeOnline || naRade !== null;
 
+  /** Co je právě vybrané: buď to, čeho jsem se dotkl, nebo co už má server. */
+  const vybrane = (zeServeru: HracId | null): HracId | null => (vyber === undefined ? zeServeru : vyber);
+  const nocOdevzdali = { kolik: p.stul.odevzdalo, celkem: zivi.length };
+
   const koloPrehled = (k: KoloVerejne, role?: Record<HracId, 'pracant' | 'saboter'>): KoloPrehled => ({
     cislo: k.cislo,
     smeny: k.smeny.map((sm) => ({
@@ -408,6 +413,8 @@ export default function App() {
     imunni: k.imunni ? jm(k.imunni) : null,
     tma: k.tma,
     hlasy: k.hlasy ? k.hlasy.map((h) => ({ kdo: jm(h.kdo), komu: jm(h.komu), stin: h.stin })) : null,
+    zdrzeliSe: k.zdrzeliSe.map(jm),
+    nehlasovali: k.nehlasovali.map(jm),
   });
 
   const obrazovka = ((): ReactElement | null => {
@@ -482,23 +489,23 @@ export default function App() {
           />
         );
 
-      case 'nominace':
+      case 'nominace': {
+        const c = vybrane(p.ja.nominoval);
         return (
           <Nominace
             kdo={p.hraci.map((h) => ({ id: h.id, jmeno: h.jmeno, zivy: h.zivy }))}
-            jaId={ja} vybrany={vyber ?? p.ja.nominoval} sekundy={cas}
-            nenominuju={p.ja.nenominuju && !vyber}
+            jaId={ja} vybrany={c} sekundy={cas}
+            odevzdano={p.ja.nominoval ?? (p.ja.nenominuju ? 'nikoho' : null)}
             imunni={p.stul.imunni}
             onVybrat={setVyber}
-            onNikoho={() => { setVyber(null); poslat({ typ: 'NENOMINUJU', id: ja }); }}
             onPotvrdit={() => {
-              const c = vyber ?? p.ja.nominoval;
               if (c) poslat({ typ: 'NOMINOVAT', id: ja, cil: c });
               else poslat({ typ: 'NENOMINUJU', id: ja });
               hotovo();
             }}
           />
         );
+      }
 
       case 'kandidati': {
         const nominaci = p.stul.nominaci ?? {};
@@ -526,23 +533,23 @@ export default function App() {
           />
         );
 
-      case 'rada':
+      case 'rada': {
+        const c = vybrane(p.ja.hlasoval);
         return (
           <Rada
             kandidati={p.stul.kandidati.map((id) => ({ id, jmeno: jm(id), zivy: true }))}
-            vybrany={vyber ?? p.ja.hlasoval} sekundy={cas}
+            vybrany={c} sekundy={cas}
             jsemStin={!(jaHrac?.zivy ?? true)} hlasUtracen={jaHrac?.hlasStinuUtracen ?? false}
-            zdrzelSe={p.ja.zdrzelSeHlasovani && !vyber}
+            odevzdano={p.ja.hlasoval ?? (p.ja.zdrzelSeHlasovani ? 'zdrzel' : null)}
             onVybrat={setVyber}
-            onZdrzet={() => { setVyber(null); poslat({ typ: 'ZDRZUJU_SE', id: ja }); }}
             onPotvrdit={() => {
-              const c = vyber ?? p.ja.hlasoval;
               if (c) poslat({ typ: 'HLASOVAT', id: ja, cil: c });
               else poslat({ typ: 'ZDRZUJU_SE', id: ja });
               hotovo();
             }}
           />
         );
+      }
 
       case 'hlasy': {
         const pocty = new Map<HracId, number>();
@@ -555,6 +562,8 @@ export default function App() {
               vede: (pocty.get(id) ?? 0) === max && max > 0,
             }))}
             hlasy={p.stul.hlasy.map((h) => ({ kdo: jm(h.kdo), komu: jm(h.komu), stin: h.stin }))}
+            zdrzeliSe={p.stul.zdrzeliSe.map((id) => ({ jmeno: jm(id), stin: !(p.hraci.find((h) => h.id === id)?.zivy ?? true) }))}
+            nehlasovali={p.stul.nehlasovali.map((id) => ({ jmeno: jm(id), stin: !(p.hraci.find((h) => h.id === id)?.zivy ?? true) }))}
             odkryto={odkryto} tma={p.stul.tma}
             podil={podil} onPreskocit={preskocit}
           />
@@ -575,83 +584,83 @@ export default function App() {
 
       case 'noc': {
         const jsemSaboter = p.ja.role === 'saboter' && (jaHrac?.zivy ?? false);
+        const spolu = new Set(p.ja.spoluSaboteri.map((s) => s.id));
+        const cile = zivi.map((h) => ({ id: h.id, jmeno: h.jmeno, zivy: true, spolusaboter: spolu.has(h.id) || h.id === ja }));
+        const navrhy = p.ja.navrhy.map((n) => ({ kdo: jm(n.kdo), komu: jm(n.komu) }));
+        // Na jednom telefonu se po odevzdání podává dál. Online obrazovka zůstává,
+        // ať jde tip nebo rozhodnutí změnit, dokud noc běží.
         const cekani = (poznamka: string | null) => (
-          <CekaNoc
-            hraci={zivi.map((h) => ({ id: h.id, jmeno: h.jmeno, zivy: true }))}
-            hotovi={p.stul.odevzdali} sekundy={cas} podil={podil} poznamka={poznamka}
-            onPreskocit={preskocit}
-          />
+          <CekaNoc kolik={nocOdevzdali.kolik} celkem={nocOdevzdali.celkem} sekundy={cas} podil={podil} poznamka={poznamka} onPreskocit={preskocit} />
         );
 
         if (p.ja.jsemPredak) {
           if (!p.stul.odmena) {
+            const cil = vyber ?? null;
             return (
               <Odmeny
-                dostupne={p.ja.odmeny} vybrana={odmena} cil={vyber}
+                dostupne={p.ja.odmeny} vybrana={odmena} cil={cil}
                 hraci={zivi.map((h) => ({ id: h.id, jmeno: h.jmeno, zivy: true }))}
-                onVybrat={(o) => { setOdmena(o); setVyber(null); }}
+                onVybrat={(o) => { setOdmena(o); setVyber(undefined); }}
                 onCil={setVyber}
                 onPotvrdit={() => {
                   if (!odmena) return;
                   if (odmena === 'imunita') {
-                    if (!vyber) return;
-                    poslat({ typ: 'VYBRAT_ODMENU', odmena, cil: vyber });
+                    if (!cil) return;
+                    poslat({ typ: 'VYBRAT_ODMENU', odmena, cil });
                   } else {
                     poslat({ typ: 'VYBRAT_ODMENU', odmena });
                   }
-                  setVyber(null);
+                  setVyber(undefined);
                   if (odmena !== 'vrazda') hotovo();
                 }}
               />
             );
           }
-          if (p.stul.odmena === 'vrazda' && !p.ja.rozhodl) {
-            const spolu = new Set(p.ja.spoluSaboteri.map((s) => s.id));
+          if (p.stul.odmena === 'vrazda') {
+            const c = vybrane(p.ja.rozhodl);
             return (
               <Obet
-                cile={zivi.map((h) => ({ id: h.id, jmeno: h.jmeno, zivy: true, spolusaboter: spolu.has(h.id) || h.id === ja }))}
-                vybrany={vyber} sekundy={cas} jsemPredak odmena={p.stul.odmena}
-                navrhy={p.ja.navrhy.map((n) => ({ kdo: jm(n.kdo), komu: jm(n.komu) }))}
+                cile={cile} vybrany={c} sekundy={cas} jsemPredak odmena={p.stul.odmena}
+                navrhy={navrhy} odevzdano={p.ja.rozhodl} odevzdali={nocOdevzdali}
                 onVybrat={setVyber}
                 onPotvrdit={() => {
-                  if (!vyber) return;
-                  poslat({ typ: 'PREDAK_ROZHODL', cil: vyber });
+                  if (!c) return;
+                  poslat({ typ: 'PREDAK_ROZHODL', cil: c });
                   hotovo();
                 }}
               />
             );
           }
-          return cekani(`Vzal sis ${POPIS_ODMENY[p.stul.odmena].nadpis}${p.ja.rozhodl ? `. Dnes v noci končí ${jm(p.ja.rozhodl)}` : ''}.`);
+          return cekani(`Vzal sis ${POPIS_ODMENY[p.stul.odmena].nadpis}.`);
         }
 
         if (jsemSaboter) {
-          if (!p.ja.navrhl) {
-            const spolu = new Set(p.ja.spoluSaboteri.map((s) => s.id));
+          const c = vybrane(p.ja.navrhl);
+          if (jeOnline || !p.ja.navrhl) {
             return (
               <Obet
-                cile={zivi.map((h) => ({ id: h.id, jmeno: h.jmeno, zivy: true, spolusaboter: spolu.has(h.id) || h.id === ja }))}
-                vybrany={vyber} sekundy={cas} jsemPredak={false} odmena={p.stul.odmena}
-                navrhy={p.ja.navrhy.map((n) => ({ kdo: jm(n.kdo), komu: jm(n.komu) }))}
+                cile={cile} vybrany={c} sekundy={cas} jsemPredak={false} odmena={p.stul.odmena}
+                navrhy={navrhy} odevzdano={p.ja.navrhl} odevzdali={nocOdevzdali}
                 onVybrat={setVyber}
                 onPotvrdit={() => {
-                  if (!vyber) return;
-                  poslat({ typ: 'NAVRHNOUT_OBET', id: ja, cil: vyber });
+                  if (!c) return;
+                  poslat({ typ: 'NAVRHNOUT_OBET', id: ja, cil: c });
                   hotovo();
                 }}
               />
             );
           }
-          return cekani(p.stul.odmena
-            ? `Předák vzal ${POPIS_ODMENY[p.stul.odmena].nadpis}. Tvůj návrh: ${jm(p.ja.navrhl)}.`
-            : `Tvůj návrh: ${jm(p.ja.navrhl)}. Předák ještě vybírá.`);
+          return cekani(null);
         }
 
-        if (!p.ja.podezrely) {
+        const c = vybrane(p.ja.podezrely);
+        if (jeOnline || !p.ja.podezrely) {
           return (
             <Podezrely
               cile={zivi.filter((h) => h.id !== ja).map((h) => ({ id: h.id, jmeno: h.jmeno, zivy: true }))}
-              vybrany={vyber} sekundy={cas} onVybrat={setVyber}
-              onPotvrdit={() => { if (vyber) poslat({ typ: 'ZAPSAT_PODEZRELEHO', id: ja, cil: vyber }); hotovo(); }}
+              vybrany={c} sekundy={cas} odevzdano={p.ja.podezrely} odevzdali={nocOdevzdali}
+              onVybrat={setVyber}
+              onPotvrdit={() => { if (c) poslat({ typ: 'ZAPSAT_PODEZRELEHO', id: ja, cil: c }); hotovo(); }}
             />
           );
         }

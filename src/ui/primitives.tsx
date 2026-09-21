@@ -403,12 +403,14 @@ export function Ukazatel({ podil, onPreskocit }: { podil: number; onPreskocit?: 
 // ---------------------------------------------------------------- razítko
 
 export function Razitko({
-  nadpis, popisek, barva = 'neutral', naklon = -1.6,
+  nadpis, popisek, barva = 'neutral', naklon = -1.6, prodleva = 600,
 }: {
   nadpis: string; popisek?: string;
   /** Patina a spál popisují VÝSLEDEK ŠICHTY, nikdy člověka. Role je neutrální. */
   barva?: 'neutral' | 'proslo' | 'padlo';
   naklon?: number;
+  /** Ticho před ránou, v ms. Ráno má delší, ať se stůl nadechne. */
+  prodleva?: number;
 }) {
   const pozadi = barva === 'proslo' ? 'var(--patina-400)' : barva === 'padlo' ? 'var(--spal-500)' : 'var(--ocel-50)';
   const text = barva === 'padlo' ? '#FFECE6' : 'var(--ocel-800)';
@@ -419,7 +421,7 @@ export function Razitko({
         boxShadow: '0 10px 28px rgba(0,0,0,0.42)',
         ['--naklon' as string]: `${naklon}deg`,
         transform: `rotate(${naklon}deg)`,
-        animation: 'dosednout 260ms cubic-bezier(0.2, 0.9, 0.3, 1.2) 600ms both',
+        animation: `dosednout 260ms cubic-bezier(0.2, 0.9, 0.3, 1.2) ${prodleva}ms both`,
       }}
     >
       {popisek && (

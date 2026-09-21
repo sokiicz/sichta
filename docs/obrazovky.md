@@ -86,11 +86,11 @@ co by lákalo do ní koukat.
 | # | Obrazovka | Telefon | Obsah |
 |---|---|---|---|
 | E1 | **Rozprava** | **dolů** | Jen obří odpočet. Nic jiného. Historie je zamčená |
-| E2 | **Nominace** | v ruce | Vyber jednoho. Všichni najednou |
+| E2 | **Nominace** | v ruce | Vyber jednoho, nebo nikoho. Jedno tlačítko, ťuknutí na vybraného ho odznačí |
 | E3 | **Výsledek nominací** | v ruce | Kdo postupuje do rady a s kolika nominacemi, kdo nepostupuje, kdo má imunitu |
 | E4 | **Rada** | v ruce | Hlasování mezi dvěma. Stíny mají hlas stínu |
 | E5 | **Poslední slovo** | dolů | Každý kandidát zvlášť: kdo právě mluví, kolik zbývá, kdo je další |
-| E5b | **Odhalení hlasů** | v ruce | Kdo koho volil, včetně hlasů stínů. Odkrývá se po jednom |
+| E5b | **Odhalení hlasů** | v ruce | Kdo koho volil, včetně hlasů stínů. Odkrývá se po jednom, nakonec kdo se zdržel a kdo nehlasoval |
 | E6 | **Vyhoštění** | v ruce | Kdo odchází a jaká byl role. Razítko |
 
 ### F. Noc
@@ -100,7 +100,7 @@ co by lákalo do ní koukat.
 | F1 | **Odměna** | v ruce | Jen předák. Vražda / Imunita (s výběrem koho) / Tma. Že vražda v příštím kole nepůjde, se řekne dopředu |
 | F2 | **Volba oběti** | v ruce | Sabotéři navrhují (i před volbou odměny), předák vidí návrhy u jmen a rozhodne |
 | F3 | **Podezřelý** | v ruce | Všichni ostatní. Zapiš tip, sčítá se do ceny na konci |
-| F3b | **Čeká se na noc** | v ruce | Po odeslání. Kdo už odevzdal, kdo ne |
+| F3b | **Čeká se na noc** | v ruce | Po odeslání. Jen kolik lidí odevzdalo, nikdy kdo: poslední bývá předák |
 | F4 | **Ráno** | v ruce | Co se v noci stalo. Kdo chybí, kdo má imunitu, jestli bude rada potmě |
 
 ### G. Konec

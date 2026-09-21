@@ -134,6 +134,8 @@ export interface KoloPrehled {
   tma: boolean;
   /** null: hlasy zůstaly potmě. Prázdné pole: nikdo nehlasoval nebo rada nebyla. */
   hlasy: { kdo: string; komu: string; stin: boolean }[] | null;
+  zdrzeliSe: string[];
+  nehlasovali: string[];
 }
 
 const NAZEV_SMENY: Record<Smena, string> = { dopoledni: 'DOPOLEDNÍ', odpoledni: 'ODPOLEDNÍ' };
@@ -189,6 +191,13 @@ export function SeznamKol({ kola, prazdne }: { kola: KoloPrehled[]; prazdne: str
                   {h.kdo} → {h.komu}
                 </span>
               ))}
+            </div>
+          )}
+          {(k.zdrzeliSe.length > 0 || k.nehlasovali.length > 0) && (
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tlum)', lineHeight: 1.6 }}>
+              {k.zdrzeliSe.length > 0 && <>Zdrželi se: {k.zdrzeliSe.join(', ')}</>}
+              {k.zdrzeliSe.length > 0 && k.nehlasovali.length > 0 && ' · '}
+              {k.nehlasovali.length > 0 && <>Nehlasovali: {k.nehlasovali.join(', ')}</>}
             </div>
           )}
         </Blok>

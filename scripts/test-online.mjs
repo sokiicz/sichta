@@ -191,11 +191,11 @@ async function main() {
     await cekej(600);
     overit(predak.pohled.stul.odmena === 'imunita' && predak.pohled.stul.imunni === chraneny, 'předák vzal imunitu a vidí, koho chrání');
     overit(prac.pohled.stul.odmena === null && prac.pohled.stul.imunni === null, 'pracant se v noci o odměně nedozví');
-    overit(prac.pohled.stul.odevzdali.includes(id(predak)), 'předák je po volbě mezi odevzdanými, soupiska ho neprozradí');
+    overit(prac.pohled.stul.odevzdali.length === 0 && prac.pohled.stul.odevzdalo >= 2, `v noci se posílá jen počet odevzdaných (${prac.pohled.stul.odevzdalo}), ne jména`);
 
     for (const k of pracanti) poslat(k, { typ: 'ZAPSAT_PODEZRELEHO', id: id(k), cil: id(klienti.find((x) => x !== k)) });
-    const ranoZa = await pockatNaFazi(zakladatel, 'rano', 6000);
-    overit(ranoZa >= 0 && ranoZa < 5000, `noc skončí, jakmile odevzdali všichni (za ${ranoZa} ms)`);
+    const ranoZa = await pockatNaFazi(zakladatel, 'rano', 15000);
+    overit(ranoZa >= 6000 && ranoZa < 12000, `noc skončí s odstupem po posledním odevzdání, ne hned (za ${ranoZa} ms)`);
     overit(prac.pohled.stul.imunni === chraneny && prac.pohled.stul.odmena === 'imunita', 'ráno se imunita řekne celému stolu');
   } else {
     console.log('\nNoc: šichta prošla, noc se přeskočí (sabotéři v partě nebyli)');

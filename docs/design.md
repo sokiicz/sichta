@@ -101,7 +101,7 @@ Kolo má 8 fází. Časy jsou pro 8 hráčů.
 | 7 | **Rada** | 45 s | v ruce | Nejdřív dostane každý kandidát poslední slovo (30 s, při třech a víc 20 s). Pak se hlasuje mezi nominovanými, zdržet se je taky tah. **Aplikace pak veřejně ukáže, kdo koho volil.** Odchází jen ten, kdo má nadpoloviční většinu odevzdaných hlasů a nejméně dva. Jinak nikdo (a to je tlak). |
 | 8 | **Noc** | 60 s | v ruce | Jen když šichta padla: **Předák vybere odměnu** (viz 3.2.1); u vraždy sabotéři navrhnou oběť a Předák rozhodne (viz 3.4). Všichni ostatní zároveň zapisují svého hlavního podezřelého — sčítá se do ceny "Nejlepší čuch". Fáze trvá stejně dlouho, i když nikdo neumírá. |
 
-**Časy jsou stropy, ne normy.** Fáze, ve které odevzdali všichni, na které se čeká, skončí do dvou vteřin. Kdo se odpojí uprostřed fáze, kde se od něj něco čeká, hru zastaví; zakladatel může rozhodnout, že se hraje bez něj.
+**Časy jsou stropy, ne normy.** Fáze, ve které odevzdali všichni, na které se čeká, skončí do dvou vteřin. Noc končí až osm vteřin po posledním odevzdání a v noci se ukazuje jen počet odevzdaných, ne jména: kdyby ráno přišlo hned po posledním ťuknutí, stůl by poznal, kdo byl poslední, a poslední bývá předák. Kdo se odpojí uprostřed fáze, kde se od něj něco čeká, hru zastaví; zakladatel může rozhodnout, že se hraje bez něj.
 
 **Vyhoštěnému se veřejně odhalí role.** Bez odhalení se parta nikdy nenaučí hrát a nezažije ten moment.
 

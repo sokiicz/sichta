@@ -29,6 +29,11 @@ export interface Env {
 const ODKLAD_ODPOJENI = 8000;
 /** Když odevzdali všichni, fáze skončí za tolik ms, ať ještě doběhnou animace. */
 const REZERVA_PO_ODEVZDANI = 1500;
+/**
+ * Noc končí s větším odstupem. Kdyby ráno přišlo hned po posledním odevzdání,
+ * stůl by poznal, kdo byl poslední, a poslední bývá předák.
+ */
+const REZERVA_PO_NOCI = 8000;
 /** Dohraná místnost se smaže po šesti hodinách, prázdná šatna po dni. */
 const UKLID_PO_KONCI = 6 * 60 * 60 * 1000;
 const UKLID_SATNY = 24 * 60 * 60 * 1000;
@@ -275,9 +280,10 @@ export class Mistnost {
     } else if (pred.pauza) {
       // pauza skončila, pokračuje se od vteřiny, kde se stálo
       await this.naplanovat(pred.pauza.zbyva ?? this.plnaDelka(s));
-    } else if (fazeHotova(s) && (s.konecFaze == null || s.konecFaze - ted > REZERVA_PO_ODEVZDANI)) {
+    } else if (fazeHotova(s)) {
       // odevzdali všichni, není na co čekat
-      await this.naplanovat(REZERVA_PO_ODEVZDANI);
+      const rezerva = s.faze === 'noc' ? REZERVA_PO_NOCI : REZERVA_PO_ODEVZDANI;
+      if (s.konecFaze == null || s.konecFaze - ted > rezerva) await this.naplanovat(rezerva);
     }
     await this.ulozit();
   }

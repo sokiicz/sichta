@@ -175,6 +175,33 @@ describe('noc zůstává sabotérům, ráno je veřejné', () => {
     expect(rano.stul.odmena).toBe('vrazda');
   });
 
+  it('v noci se neukazuje, kdo už odevzdal, jen kolik', () => {
+    let s = doNoci();
+    const prac = ziviPracanti(s)[0]!.id;
+    s = posli(s, { typ: 'ZAPSAT_PODEZRELEHO', id: prac, cil: ziviPracanti(s)[1]!.id });
+    const p = pohledPro(s, ziviPracanti(s)[1]!.id);
+    expect(p.stul.odevzdali).toEqual([]);
+    expect(p.stul.odevzdalo).toBe(1);
+  });
+
+  it('po odhalení hlasů je vidět, kdo se zdržel a kdo nehlasoval, pod tmou ne', () => {
+    let s = rozehrat(7);
+    s = { ...s, hraci: s.hraci.map((h) => (h.id === 'h6' ? { ...h, zivy: false } : h)) };
+    s = { ...s, faze: 'rada', aktualni: { ...noveKolo(1), kandidati: ['h1', 'h2'] } };
+    s = posli(s, { typ: 'HLASOVAT', id: 'h0', cil: 'h1' });
+    s = posli(s, { typ: 'ZDRZUJU_SE', id: 'h3' });
+    s = posli(s, { typ: 'ZDRZUJU_SE', id: 'h6' });
+    expect(pohledPro(s, 'h0').stul.zdrzeliSe).toEqual([]);
+    s = posli(s, { typ: 'DALSI_FAZE' });
+    expect(s.faze).toBe('hlasy');
+    const p = pohledPro(s, 'h0');
+    expect(p.stul.zdrzeliSe).toEqual(['h3', 'h6']);
+    expect(p.stul.nehlasovali.sort()).toEqual(['h1', 'h2', 'h4', 'h5']);
+    const tma: Stav = { ...s, aktualni: { ...s.aktualni!, tma: true } };
+    expect(pohledPro(tma, 'h0').stul.zdrzeliSe).toEqual([]);
+    expect(pohledPro(tma, 'h0').stul.nehlasovali).toEqual([]);
+  });
+
   it('imunita a tma se stolu ukážou ráno, sabotérům hned', () => {
     let s = doNoci();
     const chraneny = ziviPracanti(s)[0]!.id;
