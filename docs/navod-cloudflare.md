@@ -63,6 +63,14 @@ Až doběhne, vypíše adresu ve tvaru
 > Migrace `new_sqlite_classes` z `wrangler.toml` proběhne automaticky při
 > prvním nasazení. Ručně nic zakládat nemusíš.
 
+**Měření (Analytics Engine) se musí v účtu jednou zapnout ručně.** Bez toho
+nasazení skončí chybou `You need to enable Analytics Engine` (kód 10089).
+V dashboardu jdi na **Workers & Pages → Analytics Engine** (přímý odkaz:
+`https://dash.cloudflare.com/<id účtu>/workers/analytics-engine`), potvrď
+zapnutí a pusť `npm run cf:deploy` znovu. Je to zdarma a jednorázové, dataset
+`sichta_udalosti` se pak založí sám při prvním zápisu. Co se měří, je
+v [mereni.md](mereni.md).
+
 ---
 
 ## 3. Ověřit, že to žije
@@ -120,6 +128,10 @@ Napiš **„Cloudflare hotovo"** a napojím klienta na WebSocket.
 **`You need to register a workers.dev subdomain`**
 : V dashboardu jdi do **Workers & Pages** a založ si subdoménu. Je to
   jednorázové.
+
+**`You need to enable Analytics Engine` (kód 10089)**
+: Jednorázově zapni Analytics Engine v dashboardu, **Workers & Pages →
+  Analytics Engine**, viz krok 2. Pak nasaď znovu.
 
 **`Durable Objects are not available on your plan`**
 : Zkontroluj, že `wrangler.toml` má `new_sqlite_classes`, ne

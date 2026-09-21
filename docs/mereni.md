@@ -10,7 +10,9 @@ Herní události zapisuje worker sám, protože je vidí první. Události z tel
 (obrazovky, ťukání, chyby, výpadky) posílá `src/ui/telemetrie.ts` dávkou na
 `POST /api/udalost`, worker je zkontroluje a zapíše.
 
-Analytics Engine je na Workers Free zdarma s denním limitem zápisů; jedna
+Analytics Engine se musí v účtu jednou zapnout ručně v dashboardu
+(Workers & Pages → Analytics Engine), jinak nasazení spadne s kódem 10089,
+viz [navod-cloudflare.md](navod-cloudflare.md). Je na Workers Free zdarma s denním limitem zápisů; jedna
 partie vyrobí řádově stovky událostí, takže je to hluboko pod ním. Data se drží
 90 dní.
 
