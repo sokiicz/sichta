@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Popisek, Tlacitko } from './primitives';
+import { zaznamenat } from './telemetrie';
 import { OdkrytiRole } from '../screens/role';
 import { SeznamKol, type KoloPrehled } from '../screens/konec';
 import type { HracId, Role } from '../game/types';
@@ -47,7 +48,8 @@ export function Prehled() {
     return (
       <button
         type="button"
-        onClick={zamceno ? undefined : () => setOtevreno(true)}
+        data-mereni="prehled"
+        onClick={zamceno ? () => zaznamenat('prehled_zamceny') : () => { zaznamenat('prehled'); setOtevreno(true); }}
         aria-label={zamceno ? 'Přehled je během rozpravy zamčený' : 'Otevřít přehled hry'}
         aria-disabled={zamceno}
         style={{

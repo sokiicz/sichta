@@ -14,6 +14,7 @@ import { NastaveniHry } from './screens/nastaveni';
 import { PoskytniZapisnik, Zapisnik } from './ui/zapisnik';
 import { PoskytniPrehled, Prehled as PrehledHry, type DataPrehledu } from './ui/prehled';
 import { useBdeni } from './ui/bdeni';
+import { nastavitKontext, zaznamenat } from './ui/telemetrie';
 
 import { delkaFaze } from './game/rules';
 import type { HracId, Odmena } from './game/types';
@@ -170,6 +171,25 @@ export default function App() {
   // Displej nesmí zhasnout uprostřed rozpravy, jinak spadne spojení.
   useBdeni(jeOnline && krok === 'hra' && pohled !== null && pohled.faze !== 'konec');
 
+  // Měření: každá obrazovka a jak dlouho na ní telefon byl. Kontext nese
+  // režim, místnost a fázi, ať jde z dat poznat, kde se lidi zasekli.
+  const obrazovkaKlic = `${krok}/${pohled?.faze ?? ''}/${pohled?.kolo ?? 0}/${naRade ?? ''}`;
+  const predchoziObrazovka = useRef<{ klic: string; od: number } | null>(null);
+  useEffect(() => {
+    nastavitKontext({
+      rezim: krok === 'uvod' || krok === 'kod' ? null : rezim,
+      kod: rezim === 'online' ? kod : null,
+      hrac: pohled?.ja.id ?? null,
+      faze: pohled?.faze ?? krok,
+      kolo: pohled?.kolo ?? 0,
+      pocetHracu: pohled?.hraci.length ?? hotseatStav?.hraci.length ?? 0,
+    });
+    const ted = Date.now();
+    const pred = predchoziObrazovka.current;
+    zaznamenat('obrazovka', { detail: obrazovkaKlic.split('/').slice(0, 2).join('/'), detail2: pred?.klic.split('/').slice(0, 2).join('/'), hodnota: pred ? ted - pred.od : 0 });
+    predchoziObrazovka.current = { klic: obrazovkaKlic, od: ted };
+  }, [obrazovkaKlic]);
+
   useEffect(() => {
     setPrevzal(false); setVyber(undefined); setOdmena(null); setOdkryto(0);
   }, [pohled?.faze, pohled?.kolo, pohled?.stul.mluvi, naRade]);
@@ -264,9 +284,9 @@ export default function App() {
         ? `Naposledy jsi hrál online v šichtě ${stareSezeni.kod} jako ${stareSezeni.jmeno}.`
         : null;
     const pokracovat = ulozena
-      ? () => { hra.hotseatObnovit(); setRezim('hotseat'); setKrok(ulozena.faze === 'satna' ? 'satna' : 'hra'); }
+      ? () => { zaznamenat('pokracovat', { detail: 'hotseat', detail2: ulozena.faze }); hra.hotseatObnovit(); setRezim('hotseat'); setKrok(ulozena.faze === 'satna' ? 'satna' : 'hra'); }
       : stareSezeni
-        ? () => { setRezim('online'); setKod(stareSezeni.kod); setJmeno(stareSezeni.jmeno); setStareSezeni(null); setKrok('hra'); }
+        ? () => { zaznamenat('pokracovat', { detail: 'online' }); setRezim('online'); setKod(stareSezeni.kod); setJmeno(stareSezeni.jmeno); setStareSezeni(null); setKrok('hra'); }
         : undefined;
     const nova = () => { hra.hotseatZahodit(); ulozitSezeni(null); setStareSezeni(null); setChyba(null); };
     return (
@@ -275,9 +295,9 @@ export default function App() {
         chyba={chyba}
         rozehrana={rozehrana}
         onPokracovat={pokracovat}
-        onZalozit={() => { nova(); setRezim('online'); setZalozit(true); setKrok('prezdivka'); }}
-        onPripojit={() => { nova(); setRezim('online'); setZalozit(false); setKrok('kod'); }}
-        onHotSeat={() => { nova(); setRezim('hotseat'); setKrok('prezdivka'); }}
+        onZalozit={() => { zaznamenat('volba_rezimu', { detail: 'zalozit', detail2: rozehrana ? 'misto_rozehrane' : '' }); nova(); setRezim('online'); setZalozit(true); setKrok('prezdivka'); }}
+        onPripojit={() => { zaznamenat('volba_rezimu', { detail: 'pripojit', detail2: rozehrana ? 'misto_rozehrane' : '' }); nova(); setRezim('online'); setZalozit(false); setKrok('kod'); }}
+        onHotSeat={() => { zaznamenat('volba_rezimu', { detail: 'hotseat', detail2: rozehrana ? 'misto_rozehrane' : '' }); nova(); setRezim('hotseat'); setKrok('prezdivka'); }}
         onPravidla={doPravidel}
       />
     );
@@ -310,6 +330,7 @@ export default function App() {
             try {
               setKod(await zalozitMistnost());
             } catch {
+              zaznamenat('zalozeni_selhalo');
               setChyba('Server šichty neodpovídá. Zkus to za chvíli, nebo hrajte na jednom telefonu.');
               setKrok('uvod');
               return;
@@ -707,6 +728,7 @@ export default function App() {
               jsemZakladatel={jsemZakladatel}
               onPrubeh={() => setKrok('prubeh')}
               onZnovu={() => {
+                zaznamenat('znovu_klik', { detail: jeOnline ? 'online' : 'hotseat' });
                 if (jeOnline) { poslat({ typ: 'ZNOVU' }); return; }
                 hra.hotseatZahodit();
                 window.location.reload();

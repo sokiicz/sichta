@@ -102,6 +102,7 @@ export function OdkrytiRole({ role, spoluSaboteri, jsemPredak, pocetSaboteru, on
 
       <button
         type="button"
+        data-mereni="odkryt-roli"
         onPointerDown={drz}
         onPointerUp={pust}
         onPointerLeave={pust}

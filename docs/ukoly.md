@@ -104,6 +104,9 @@ Velikost: S = do hodiny, M = půl dne, L = den a víc. Každý úkol má napsan�
 
 ## Vlna 6 · Nové funkce (otevřené)
 
+- [x] **6.1 Měření chování** · M · hotovo 2026-09-21
+  Workers Analytics Engine bez cookies. Worker zapisuje herní události (fáze, výsledky, odměny, konce, pauzy, zamítnuté akce), telefon posílá obrazovky, rage kliky, mrtvé kliky, chyby, výpadky. Sloupce a dotazy v [mereni.md](mereni.md).
+
 - [ ] **6.2 Protokol partie** · M
   Na obrazovce Odhalení tlačítko Sdílet: text a JSON s průběhem (party, výsledky, hlasy, vyhoštění, oběti, role). Jediný zdroj dat na doladění `rules.ts`. Doporučuji před playtestem.
 

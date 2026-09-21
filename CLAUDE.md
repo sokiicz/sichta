@@ -12,6 +12,7 @@ root rules at `D:/ai/CLAUDE.md`.
 - `docs/navod-cloudflare.md` — kroky, které musí udělat uživatel
 - `docs/audit-aplikace.md` — audit kódu, hry a plánu z 2026-09-20, nálezy K/U/D
 - `docs/ukoly.md` — úkoly v pořadí oprav, odkazují na nálezy auditu
+- `docs/mereni.md` — měření chování: sloupce v Analytics Engine, seznam událostí, dotazy
 - `brand/tokens.css` — **zdroj pravdy pro barvy.** Ne mockupy.
 - `brand/README.md` — pravidla značky a tón textů
 - `src/game/` — čistá herní logika bez UI, pokrytá testy
@@ -39,6 +40,9 @@ Návrhy obrazovek: https://claude.ai/artifact/RDaLmTWuJK8vqX4SbT2MrV
 - **Abeceda kódu místnosti je v `src/game/kod.ts`.** Klávesnice v šatně i
   generátor ve workeru čtou z ní. Jednou se rozešly a kód `B7Z4P6` se nedal
   naťukat, protože mřížka měla jen A až J.
+- **Jméno hráče je v nápisu tlačítka vždy až za dvojtečkou** („NOMINOVAT: HONZA").
+  Měření nápis u dvojtečky usekne, ať přezdívky nejdou do dat. Surový `<button>`
+  dostane `data-mereni="..."`, jinak se v datech objeví jen jako `button:`.
 - **Zvuk nesmí prozradit roli.** `src/ui/zvuk.ts` se řídí jen veřejnými údaji
   z pohledu. Nahlas hraje jeden telefon: hot seat vždy, online zakladatel.
 - **Pořadí, v jakém cokoliv obchází stůl, nesmí záviset na roli.** Fronta
@@ -57,7 +61,7 @@ netknutý, ostatní projekty o tomhle nevědí. **Nepouštěj `npx wrangler` př
 vždycky přes `npm run cf:*`.
 
 ## Nástroje
-- `npm test` — testy herní logiky (103 testů, hrají celé partie)
+- `npm test` — testy herní logiky (112 testů, hrají celé partie)
 - `npm run test:online -- <adresa>` — integrační test proti workeru (lokálně
   `http://localhost:8787` s běžícím `cf:dev`, nebo živá adresa). Bere přenosný
   Node 22 přes `scripts/node22.mjs`, systémový Node 20 nemá `WebSocket`

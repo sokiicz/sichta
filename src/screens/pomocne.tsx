@@ -4,6 +4,7 @@ import {
   Stitek, Tlacitko, Veta, Volba, Zpet,
 } from '../ui/primitives';
 import { prepnoutZvuk, zvukZapnuty } from '../ui/zvuk';
+import { zaznamenat } from '../ui/telemetrie';
 
 // ---------------------------------------------------------------- pravidla
 
@@ -42,7 +43,7 @@ export function Pravidla({ onZpet }: { onZpet: () => void }) {
         ))}
 
         <div style={{ flexShrink: 0, marginTop: 4 }}>
-          <Volba onClick={() => setZvuk(prepnoutZvuk())} popis="Zvuk" vpravo={<Stitek tlumeny>{zvuk ? 'ZAPNUTO' : 'VYPNUTO'}</Stitek>}>
+          <Volba onClick={() => { const z = prepnoutZvuk(); zaznamenat('zvuk', { detail: z ? 'zapnuto' : 'vypnuto' }); setZvuk(z); }} popis="Zvuk" vpravo={<Stitek tlumeny>{zvuk ? 'ZAPNUTO' : 'VYPNUTO'}</Stitek>}>
             ZVUK
           </Volba>
           <div style={{ marginTop: 8 }}>

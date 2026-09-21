@@ -6,6 +6,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 // v kořeni a je se serverem na stejné adrese. Díky tomu nevzniká CORS.
 export default defineConfig({
   base: '/',
+  // Verze buildu pro měření: podle ní se pozná, které nasazení událost poslalo.
+  define: { __VERZE__: JSON.stringify(new Date().toISOString().slice(0, 16)) },
   plugins: [
     react(),
     VitePWA({

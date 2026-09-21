@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { zaznamenat } from './telemetrie';
 
 /**
  * Zápisník. Každý hráč má svůj a nikdo jiný ho nevidí.
@@ -60,7 +61,8 @@ export function Zapisnik() {
     return (
       <button
         type="button"
-        onClick={() => setOtevreno(true)}
+        data-mereni="zapisnik"
+        onClick={() => { zaznamenat('zapisnik'); setOtevreno(true); }}
         aria-label="Otevřít zápisník"
         style={{
           position: 'fixed', right: 14, bottom: 'max(14px, env(safe-area-inset-bottom))',
@@ -120,6 +122,7 @@ export function Zapisnik() {
       <div style={{ display: 'flex', gap: 10 }}>
         <button
           type="button"
+          data-mereni="smazat-zapisnik"
           onClick={() => setText('')}
           style={{
             flexShrink: 0, minHeight: 62, padding: '0 18px',
@@ -132,6 +135,7 @@ export function Zapisnik() {
         </button>
         <button
           type="button"
+          data-mereni="zavrit-zapisnik"
           onClick={() => setOtevreno(false)}
           style={{
             flexGrow: 1, minHeight: 62,

@@ -53,7 +53,7 @@ export function Rozprava({ sekundy, celkem, hlasovani, onDal, onChciDal }: {
     return (
       <Obrazovka tmava>
         <button
-          type="button" onClick={onDal} aria-label="Ukončit rozpravu"
+          type="button" data-mereni="ukoncit-rozpravu" onClick={onDal} aria-label="Ukončit rozpravu"
           style={{
             flexGrow: 1, border: 'none', background: 'none', padding: 0,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 32,

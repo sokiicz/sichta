@@ -1,5 +1,6 @@
 import type { Akce } from '../game/types';
 import type { Pohled } from '../game/pohled';
+import { zaznamenat } from '../ui/telemetrie';
 
 /**
  * WebSocket klient k Durable Objectu.
@@ -85,7 +86,11 @@ export class Spojeni {
     const ws = new WebSocket(url);
     this.ws = ws;
 
-    ws.onopen = () => { this.pokus = 0; this.n.onStav('pripojen'); };
+    ws.onopen = () => {
+      if (this.pokus > 0) zaznamenat('sit_navrat', { hodnota: this.pokus });
+      this.pokus = 0;
+      this.n.onStav('pripojen');
+    };
 
     ws.onmessage = (e) => {
       try {
@@ -95,6 +100,7 @@ export class Spojeni {
           this.n.onPohled(d.p, posun);
         } else if (d.t === 'chyba' && d.kod) {
           this.zavreno = true;
+          zaznamenat('sit_odmitnuto', { detail: d.kod });
           this.n.onChyba(d.kod);
         }
       } catch {
@@ -104,6 +110,7 @@ export class Spojeni {
 
     ws.onclose = () => {
       if (this.zavreno) return;
+      if (this.pokus === 0) zaznamenat('sit_vypadek', { detail: document.visibilityState });
       this.n.onStav('odpojen');
       this.naplanovatZnovu();
     };

@@ -6,6 +6,7 @@ import {
 import { MAX_HRACU, MIN_HRACU, sestavaPro } from '../game/rules';
 import { ABECEDA_KODU, DELKA_KODU } from '../game/kod';
 import { jeDivokaSestava } from '../game/rules';
+import { stitekNapisu, zaznamenat } from '../ui/telemetrie';
 
 // ---------------------------------------------------------------- úvod
 
@@ -56,7 +57,7 @@ export function Uvod({ siteDostupna, chyba, rozehrana, onPokracovat, onZalozit, 
         <span style={{ fontSize: 'var(--t-meta-size)', fontWeight: 600, color: 'var(--text-tlum)' }}>
           {MIN_HRACU} až {MAX_HRACU} hráčů
         </span>
-        <button type="button" onClick={onPravidla} style={{ border: 'none', background: 'none', padding: '8px 0', fontSize: 'var(--t-meta-size)', fontWeight: 700, letterSpacing: '0.12em', color: 'var(--text-akcent)' }}>
+        <button type="button" data-mereni="pravidla" onClick={onPravidla} style={{ border: 'none', background: 'none', padding: '8px 0', fontSize: 'var(--t-meta-size)', fontWeight: 700, letterSpacing: '0.12em', color: 'var(--text-akcent)' }}>
           PRAVIDLA
         </button>
       </div>
@@ -81,7 +82,7 @@ export function Prezdivka({ vychozi, onHotovo, onZpet, onPravidla }: {
         <h1 style={{ margin: 0, flexGrow: 1, fontFamily: 'var(--font-nadpis)', fontWeight: 400, fontSize: 26, letterSpacing: '0.05em' }}>
           JAK TI ŘÍKAT
         </h1>
-        <button type="button" onClick={onPravidla} style={{ border: 'none', background: 'none', padding: '8px 0', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', color: 'var(--text-akcent)' }}>
+        <button type="button" data-mereni="pravidla" onClick={onPravidla} style={{ border: 'none', background: 'none', padding: '8px 0', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', color: 'var(--text-akcent)' }}>
           PRAVIDLA
         </button>
       </div>
@@ -108,7 +109,7 @@ export function Prezdivka({ vychozi, onHotovo, onZpet, onPravidla }: {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {NAVRHY.map((n) => (
             <button
-              key={n} type="button" onClick={() => setJmeno(n)}
+              key={n} type="button" data-mereni="navrh-jmena" onClick={() => setJmeno(n)}
               style={{
                 minHeight: 44, padding: '11px 14px',
                 border: 'var(--ram-blok) solid var(--ram)', background: 'var(--blok)',
@@ -155,8 +156,10 @@ export function Satna({
   const poslatOdkaz = async () => {
     if (!odkaz) return;
     try {
-      if (navigator.share) await navigator.share({ title: 'Šichta', text: `Kód šichty: ${kod}`, url: odkaz });
+      const umiSdilet = typeof navigator.share === 'function';
+      if (umiSdilet) await navigator.share({ title: 'Šichta', text: `Kód šichty: ${kod}`, url: odkaz });
       else await navigator.clipboard.writeText(odkaz);
+      zaznamenat('sdilet_odkaz', { detail: umiSdilet ? 'share' : 'schranka' });
       setPoslano(true);
       setTimeout(() => setPoslano(false), 2200);
     } catch {
@@ -170,11 +173,11 @@ export function Satna({
         nadpis="ŠATNA"
         vpravo={
           <span style={{ display: 'flex', gap: 14 }}>
-            <button type="button" onClick={onPravidla} style={{ border: 'none', background: 'none', padding: '8px 0', fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--text-tlum)' }}>
+            <button type="button" data-mereni="pravidla" onClick={onPravidla} style={{ border: 'none', background: 'none', padding: '8px 0', fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--text-tlum)' }}>
               PRAVIDLA
             </button>
             {jsemZakladatel && onNastaveni && (
-              <button type="button" onClick={onNastaveni} style={{ border: 'none', background: 'none', padding: '8px 0', fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--text-akcent)' }}>
+              <button type="button" data-mereni={stitekNapisu(popisekAkce)} onClick={onNastaveni} style={{ border: 'none', background: 'none', padding: '8px 0', fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--text-akcent)' }}>
                 {popisekAkce}
               </button>
             )}
@@ -191,7 +194,7 @@ export function Satna({
         </div>
         {odkaz && (
           <button
-            type="button" onClick={poslatOdkaz}
+            type="button" data-mereni="sdilet" onClick={poslatOdkaz}
             style={{
               flexShrink: 0, minHeight: 52, padding: '0 15px',
               border: '3px solid var(--ram)', background: 'var(--blok)',
@@ -221,7 +224,7 @@ export function Satna({
                   {!h.pripojeny ? <Stitek tlumeny>ODPOJEN</Stitek> : h.zakladatel ? <Stitek>ZAKLADATEL</Stitek> : <Fajfka />}
                   {onVyhodit && jsemZakladatel && h.id !== jaId && (
                     <button
-                      type="button" onClick={() => onVyhodit(h.id)} aria-label={`Vyhodit ${h.jmeno}`}
+                      type="button" data-mereni="vyhodit" onClick={() => onVyhodit(h.id)} aria-label={`Vyhodit ${h.jmeno}`}
                       style={{ width: 44, height: 44, border: '2px solid var(--ram-tlum)', background: 'transparent', color: 'var(--ocel-400)', fontFamily: 'var(--font-nadpis)', fontSize: 18 }}
                     >
                       ×
@@ -309,12 +312,12 @@ export function KodSichty({ onHotovo, onZpet, chyba }: {
 
       <div style={{ flexGrow: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, alignContent: 'end' }}>
         {[...ABECEDA_KODU].map((z) => (
-          <button key={z} type="button" onClick={() => pridat(z)}
+          <button key={z} type="button" data-mereni="klavesa" onClick={() => pridat(z)}
             style={{ minHeight: 56, border: '3px solid var(--ram)', background: 'var(--blok)', color: 'var(--ocel-50)', fontFamily: 'var(--font-nadpis)', fontSize: 22 }}>
             {z}
           </button>
         ))}
-        <button type="button" onClick={smazat} aria-label="Smazat"
+        <button type="button" data-mereni="smazat" onClick={smazat} aria-label="Smazat"
           style={{ gridColumn: '1 / -1', minHeight: 56, border: '3px solid var(--ram)', background: 'var(--blok)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="24" height="18" viewBox="0 0 24 18" fill="none" aria-hidden="true">
             <path d="M8 1h14v16H8L1 9z" stroke="var(--text)" strokeWidth="2" />

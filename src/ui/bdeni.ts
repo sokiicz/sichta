@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { zaznamenat } from './telemetrie';
 
 /**
  * Wake lock. Během rozpravy leží telefony lícem dolů čtyři minuty a bez
@@ -18,8 +19,10 @@ export function useBdeni(aktivni: boolean) {
       if (zruseno || document.visibilityState !== 'visible') return;
       try {
         zamek = await navigator.wakeLock.request('screen');
+        zaznamenat('bdeni', { detail: 'ok' });
       } catch {
         // nízká baterie nebo zákaz prohlížeče: hra běží i bez toho
+        zaznamenat('bdeni', { detail: 'odmitnuto' });
       }
     };
     const naViditelnost = () => { if (document.visibilityState === 'visible') void pozadat(); };

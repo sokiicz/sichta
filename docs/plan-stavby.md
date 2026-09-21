@@ -20,7 +20,7 @@ a nouzovka, ne jako herní režim: nehlídá čas a předává se ručně.
 | 1.1 | Vite + React + TypeScript, PWA | Claude | hotovo |
 | 1.2 | `brand/tokens.css` zapojené, písma z Google Fonts | Claude | hotovo |
 | 1.3 | `src/game/` — typy, pravidla, stavový automat, čistý reducer bez UI | Claude | hotovo |
-| 1.4 | Testy nad reducerem a nad pohledem hráče | Claude | hotovo, 103 testů |
+| 1.4 | Testy nad reducerem a nad pohledem hráče | Claude | hotovo, 112 testů |
 | 1.5 | Obrazovky jako komponenty nad tokeny | Claude | hotovo |
 | 1.6 | Hot seat režim: jedno zařízení, předává se dokola | Claude | hotovo |
 | 1.7 | Animace podle [obrazovky.md](obrazovky.md) §3 | Claude | hotovo |

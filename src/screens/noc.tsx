@@ -45,7 +45,7 @@ export function Odmeny({ dostupne, vybrana, cil, hraci, onVybrat, onCil, onPotvr
           const zvoleno = vybrana === o;
           return (
             <button
-              key={o} type="button" disabled={!lze}
+              key={o} type="button" data-mereni={o} disabled={!lze}
               onClick={() => onVybrat(o)} aria-pressed={zvoleno}
               style={{
                 width: '100%', flexShrink: 0, padding: 16, textAlign: 'left',

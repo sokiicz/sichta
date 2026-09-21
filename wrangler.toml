@@ -18,5 +18,10 @@ new_sqlite_classes = ["Mistnost"]
 directory = "./dist"
 binding = "SOUBORY"
 
+# Měření chování, viz docs/mereni.md. Bez cookies, bez třetích stran.
+[[analytics_engine_datasets]]
+binding = "ANALYTIKA"
+dataset = "sichta_udalosti"
+
 [observability]
 enabled = true

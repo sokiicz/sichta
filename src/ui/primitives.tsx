@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { vibrovat, VZOR } from './zvuk';
+import { stitekNapisu, zaznamenat } from './telemetrie';
 
 /**
  * Stavební kameny obrazovek. Všechno bere barvy z tokenů, nikdy natvrdo.
@@ -235,6 +236,11 @@ function sDotekem(onClick?: () => void) {
   return () => { vibrovat(VZOR.klepnuti); onClick(); };
 }
 
+/** Tlačítko bez akce se měří: kdo do něj ťuká, čekal, že něco udělá. */
+function bezEfektu(stitek: string | undefined) {
+  return () => zaznamenat('klik_bez_efektu', { detail: stitek ?? '' });
+}
+
 export function Tlacitko({
   children, onClick, druh = 'vedlejsi', vyska = 'var(--tlacitko-h)', zvoleno, popis, male,
 }: {
@@ -243,10 +249,12 @@ export function Tlacitko({
   /** Menší písmo pro delší nápisy, ať se na úzkém telefonu nelámou. */
   male?: boolean;
 }) {
+  const stitek = stitekNapisu(popis ?? children);
   return (
     <button
       type="button"
-      onClick={sDotekem(onClick)}
+      data-mereni={stitek}
+      onClick={sDotekem(onClick) ?? bezEfektu(stitek)}
       aria-label={popis}
       aria-pressed={zvoleno}
       style={{
@@ -270,10 +278,13 @@ export function Volba({
   /** Přístupný název, když nápis sám neříká, co se přepíná. */
   popis?: string;
 }) {
+  // Nápis volby bývá jméno hráče, do měření jde jen popis nebo obecná „volba".
+  const stitek = stitekNapisu(popis) ?? 'volba';
   return (
     <button
       type="button"
-      onClick={vypnuto ? undefined : sDotekem(onClick)}
+      data-mereni={stitek}
+      onClick={vypnuto ? undefined : sDotekem(onClick) ?? bezEfektu(stitek)}
       disabled={vypnuto}
       aria-label={popis ?? (typeof children === 'string' ? children : undefined)}
       aria-pressed={zvoleno}
@@ -387,7 +398,7 @@ export function Ukazatel({ podil, onPreskocit }: { podil: number; onPreskocit?: 
     <button
       type="button"
       onClick={onPreskocit}
-      aria-label="Přeskočit na další fázi"
+      data-mereni="preskocit" aria-label="Přeskočit na další fázi"
       style={{
         display: 'block', width: '100%', height: 5, flexShrink: 0,
         padding: '20px 0', margin: '-20px 0',
@@ -465,7 +476,7 @@ export function Zamek({ velikost = 52 }: { velikost?: number }) {
 export function Zpet({ onClick }: { onClick: () => void }) {
   return (
     <button
-      type="button" onClick={onClick} aria-label="Zpět"
+      type="button" data-mereni="zpet" onClick={onClick} aria-label="Zpět"
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         width: 44, height: 44, flexShrink: 0,

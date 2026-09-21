@@ -24,7 +24,7 @@ export function Predel({ kolo, smena, limit, onDal }: {
   return (
     <Obrazovka tmava rez>
       <button
-        type="button" onClick={onDal} aria-label="Pokračovat"
+        type="button" data-mereni="pokracovat" onClick={onDal} aria-label="Pokračovat"
         style={{
           flexGrow: 1, border: 'none', background: 'none', padding: 0,
           display: 'flex', flexDirection: 'column', alignItems: 'center',

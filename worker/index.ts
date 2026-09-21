@@ -9,20 +9,23 @@
  * Co tu je navíc oproti reduceru a co reducer schválně neumí:
  * - náhoda místnosti (`seed`), která nikdy neopustí server,
  * - kdo smí kterou akci poslat (`smiPoslat`),
- * - hodiny: kdy fáze končí, jak dlouho stojí pauza, kdy se uklidí místnost.
+ * - hodiny: kdy fáze končí, jak dlouho stojí pauza, kdy se uklidí místnost,
+ * - měření: herní události jdou do Analytics Engine, viz docs/mereni.md.
  */
 
 import { fazeHotova, prazdnyStav, reducer, zivi } from '../src/game/machine';
 import { delkaFaze, MAX_HRACU } from '../src/game/rules';
 import { pohledPro } from '../src/game/pohled';
 import { smiPoslat } from '../src/game/opravneni';
-import { ABECEDA_KODU, DELKA_KODU } from '../src/game/kod';
+import { ABECEDA_KODU, DELKA_KODU, platnyKod } from '../src/game/kod';
 import type { Akce, HracId, Stav } from '../src/game/types';
 
 export interface Env {
   MISTNOST: DurableObjectNamespace;
   /** Postavená appka. Wrangler ji bere z ./dist podle wrangler.toml. */
   SOUBORY: { fetch: (req: Request) => Promise<Response> };
+  /** Workers Analytics Engine. Bez vazby se měření tiše přeskočí. */
+  ANALYTIKA?: AnalyticsEngineDataset;
 }
 
 /** Krátký výpadek není odpojení. Tolik ms se čeká, než hru zastavíme. */
@@ -71,6 +74,84 @@ const json = (data: unknown, status = 200) =>
     headers: { 'content-type': 'application/json', ...CORS },
   });
 
+// ---------------------------------------------------------------- měření
+
+/**
+ * Jedna událost pro Analytics Engine. Pořadí sloupců je pevné a popsané
+ * v docs/mereni.md; kdo ho změní, musí změnit i dotazy.
+ */
+export interface Udalost {
+  typ: string;
+  zdroj: 'server' | 'klient';
+  rezim?: string;
+  faze?: string;
+  detail?: string;
+  detail2?: string;
+  hrac?: string;
+  sezeni?: string;
+  zarizeni?: string;
+  platforma?: string;
+  verze?: string;
+  pocetHracu?: number;
+  kolo?: number;
+  hodnota?: number;
+  hodnota2?: number;
+  zivych?: number;
+  /** Čas na telefonu, u serverových událostí 0. Analytics Engine si čas zapíše sám. */
+  cas?: number;
+}
+
+const orez = (s: string | undefined, n: number) => (s ?? '').slice(0, n);
+const cislo = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? x : 0);
+
+export function zapsatUdalost(env: Env, kod: string, u: Udalost) {
+  try {
+    env.ANALYTIKA?.writeDataPoint({
+      indexes: [orez(kod, 32)],
+      blobs: [
+        orez(u.typ, 40), u.zdroj, orez(u.rezim, 12), orez(u.faze, 20),
+        orez(u.detail, 120), orez(u.detail2, 120), orez(u.hrac, 12), orez(u.sezeni, 12),
+        orez(u.zarizeni, 12), orez(u.platforma, 20), orez(u.verze, 24),
+      ],
+      doubles: [cislo(u.pocetHracu), cislo(u.kolo), cislo(u.hodnota), cislo(u.hodnota2), cislo(u.zivych), cislo(u.cas)],
+    });
+  } catch {
+    // měření nikdy nesmí shodit hru
+  }
+}
+
+/** Dávka událostí z telefonu. Kontroluje se tvar, ne pravdivost: je to měření, ne stav hry. */
+async function prijmoutUdalosti(req: Request, env: Env): Promise<Response> {
+  if (!env.ANALYTIKA) return new Response(null, { status: 204, headers: CORS });
+  const text = await req.text();
+  if (text.length > 64 * 1024) return new Response('Moc velké.', { status: 413, headers: CORS });
+  let data: { sezeni?: unknown; zarizeni?: unknown; platforma?: unknown; verze?: unknown; udalosti?: unknown };
+  try { data = JSON.parse(text); } catch { return new Response('Pokažené.', { status: 400, headers: CORS }); }
+  if (!Array.isArray(data.udalosti)) return new Response('Pokažené.', { status: 400, headers: CORS });
+
+  const spolecne = {
+    sezeni: typeof data.sezeni === 'string' ? data.sezeni : '',
+    zarizeni: typeof data.zarizeni === 'string' ? data.zarizeni : '',
+    platforma: typeof data.platforma === 'string' ? data.platforma : '',
+    verze: typeof data.verze === 'string' ? data.verze : '',
+  };
+  for (const u of data.udalosti.slice(0, 50) as Record<string, unknown>[]) {
+    if (!u || typeof u.typ !== 'string' || !/^[a-z_]{1,40}$/.test(u.typ)) continue;
+    const kod = typeof u.kod === 'string' && platnyKod(u.kod) ? u.kod.toUpperCase() : 'bez';
+    zapsatUdalost(env, kod, {
+      typ: u.typ, zdroj: 'klient', ...spolecne,
+      rezim: typeof u.rezim === 'string' ? u.rezim : '',
+      faze: typeof u.faze === 'string' ? u.faze : '',
+      detail: typeof u.detail === 'string' ? u.detail : '',
+      detail2: typeof u.detail2 === 'string' ? u.detail2 : '',
+      hrac: typeof u.hrac === 'string' ? u.hrac : '',
+      pocetHracu: cislo(u.pocetHracu), kolo: cislo(u.kolo),
+      hodnota: cislo(u.hodnota), hodnota2: cislo(u.hodnota2), cas: cislo(u.cas),
+    });
+  }
+  return new Response(null, { status: 204, headers: CORS });
+}
+
 // ---------------------------------------------------------------- worker
 
 export default {
@@ -81,7 +162,12 @@ export default {
 
     if (url.pathname === '/api/mistnost' && req.method === 'POST') {
       const kod = novyKod();
+      zapsatUdalost(env, kod, { typ: 'mistnost_zalozena', zdroj: 'server', rezim: 'online' });
       return json({ kod });
+    }
+
+    if (url.pathname === '/api/udalost' && req.method === 'POST') {
+      return prijmoutUdalosti(req, env);
     }
 
     const m = url.pathname.match(new RegExp(`^/api/mistnost/([${ABECEDA_KODU}]{${DELKA_KODU}})(/.*)?$`));
@@ -120,14 +206,23 @@ export class Mistnost {
   /** Id hráčů jdou z počítadla, ne z délky soupisky: kdo odejde, uvolní jméno, ne id. */
   private dalsiId = 1;
   private alarmTyp: AlarmTyp = null;
+  /** Kód místnosti, kvůli měření. Objekt sám svoje jméno nezná, vezme ho z první adresy. */
+  private kod = '';
+  private startFaze = 0;
+  private startPartie = 0;
+  /** Fáze skončila dřív, protože odevzdali všichni. Jen pro měření. */
+  private konciDrive = false;
 
-  constructor(private ctx: DurableObjectState, _env: Env) {
+  constructor(private ctx: DurableObjectState, private env: Env) {
     this.ctx.blockConcurrencyWhile(async () => {
       this.stav = (await this.ctx.storage.get<Stav>('stav')) ?? prazdnyStav();
       this.tokeny = new Map((await this.ctx.storage.get<[string, HracId][]>('tokeny')) ?? []);
       this.seed = (await this.ctx.storage.get<number>('seed')) ?? 0;
       this.dalsiId = (await this.ctx.storage.get<number>('dalsiId')) ?? 1;
       this.alarmTyp = (await this.ctx.storage.get<AlarmTyp>('alarmTyp')) ?? null;
+      this.kod = (await this.ctx.storage.get<string>('kod')) ?? '';
+      this.startFaze = (await this.ctx.storage.get<number>('startFaze')) ?? 0;
+      this.startPartie = (await this.ctx.storage.get<number>('startPartie')) ?? 0;
       if (!this.seed) {
         this.seed = nahodnySeed();
         await this.ulozit();
@@ -137,6 +232,7 @@ export class Mistnost {
 
   async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);
+    if (!this.kod) this.kod = url.pathname.split('/')[3] ?? '';
 
     if (req.headers.get('Upgrade') !== 'websocket') {
       return json({ faze: this.stav.faze, hracu: this.stav.hraci.length });
@@ -167,16 +263,19 @@ export class Mistnost {
         this.stav = reducer(this.stav, { typ: 'PRIDAT_HRACE', id: hracId, jmeno }, this.seed);
         this.tokeny.set(token, hracId);
         await this.poAkci(pred);
+        this.zapsat('hrac_pripojen', { hrac: hracId });
       }
     } else {
       const pred = this.stav;
       this.stav = reducer(this.stav, { typ: 'PRIPOJIL_SE', id: hracId }, this.seed);
       await this.poAkci(pred);
+      this.zapsat('hrac_navrat', { hrac: hracId, detail: pred.pauza ? 'pauza' : '' });
     }
 
     server.serializeAttachment({ token, hracId } satisfies Sezeni);
 
     if (chyba) {
+      this.zapsat('pozdni_prichozi', { detail: chyba });
       server.send(JSON.stringify({ t: 'chyba', kod: chyba }));
       server.close(4000, chyba);
       return new Response(null, { status: 101, webSocket: klient });
@@ -201,10 +300,29 @@ export class Mistnost {
       this.seed = nahodnySeed();
       a = { typ: 'ZACIT', partie: crypto.randomUUID() };
     }
-    if (!smiPoslat(this.stav, a, s.hracId)) return;
+    if (!smiPoslat(this.stav, a, s.hracId)) {
+      this.zapsat('akce_zamitnuta', { hrac: s.hracId, detail: a.typ });
+      return;
+    }
 
     const pred = this.stav;
+    const ted = Date.now();
     this.stav = reducer(this.stav, a, this.seed);
+    if (this.stav === pred) {
+      this.zapsat('akce_bez_efektu', { hrac: s.hracId, detail: a.typ });
+      return;
+    }
+    this.zapsat('akce', { hrac: s.hracId, detail: a.typ, hodnota: this.startFaze ? ted - this.startFaze : 0 });
+    if (a.typ === 'ZACIT') {
+      this.startPartie = ted;
+      this.zapsat('partie_start', { detail: `${this.stav.pocetSaboteru} sab`, hodnota: this.stav.limitSicht, pocetHracu: this.stav.hraci.length });
+    }
+    if (a.typ === 'ZNOVU') this.zapsat('znovu', { hodnota: this.startPartie ? ted - this.startPartie : 0 });
+    if (a.typ === 'VYBRAT_ODMENU') this.zapsat('noc_odmena', { detail: a.odmena });
+    if (a.typ === 'HRAT_BEZ_NEJ') this.zapsat('hrat_bez_nej', { detail: a.id });
+    if (a.typ === 'CHCI_DAL' && pred.faze === 'rozprava' && this.stav.faze === 'nominace') {
+      this.zapsat('rozprava_utnuta', { hodnota: this.startFaze ? ted - this.startFaze : 0 });
+    }
     await this.poAkci(pred);
     this.rozeslat();
   }
@@ -217,6 +335,7 @@ export class Mistnost {
       if (this.jePripojeny(s.hracId!)) return;
       const pred = this.stav;
       this.stav = reducer(this.stav, { typ: 'ODPOJIL_SE', id: s.hracId! }, this.seed);
+      this.zapsat('hrac_odpojen', { hrac: s.hracId!, detail: this.stav.pauza && !pred.pauza ? 'pauza' : '' });
       void this.poAkci(pred).then(() => this.rozeslat());
     }, ODKLAD_ODPOJENI);
   }
@@ -224,6 +343,7 @@ export class Mistnost {
   /** Fáze posouvá server, ne klient. Deset telefonů se nemůže rozejít. */
   async alarm() {
     if (this.alarmTyp === 'uklid') {
+      this.zapsat('uklid');
       await this.ctx.storage.deleteAll();
       return;
     }
@@ -252,6 +372,8 @@ export class Mistnost {
   private async poAkci(pred: Stav) {
     const ted = Date.now();
     const s = this.stav;
+    const zmenaFaze = this.klicFaze(pred) !== this.klicFaze(s);
+    if (zmenaFaze) this.zapsatZmenuFaze(pred, ted);
 
     if (s.faze === 'satna' || s.faze === 'konec') {
       this.stav = { ...s, konecFaze: null, pauza: null };
@@ -260,8 +382,6 @@ export class Mistnost {
       return;
     }
 
-    const zmenaFaze = this.klicFaze(pred) !== this.klicFaze(s);
-
     if (s.pauza) {
       if (s.pauza.od == null) {
         // Pauza právě začala, nebo přešla na dalšího hráče. Zbývající čas
@@ -269,11 +389,14 @@ export class Mistnost {
         const zbyva = pred.pauza?.zbyva
           ?? (s.konecFaze != null ? Math.max(0, s.konecFaze - ted) : this.plnaDelka(s));
         this.stav = { ...s, pauza: { ...s.pauza, od: pred.pauza?.od ?? ted, zbyva }, konecFaze: null };
+        if (!pred.pauza) this.zapsat('pauza_start', { detail: s.pauza.kvuli, hodnota: zbyva });
         await this.zrusitAlarm();
       }
       await this.ulozit();
       return;
     }
+
+    if (pred.pauza && !s.pauza) this.zapsat('pauza_konec', { hodnota: pred.pauza.od ? ted - pred.pauza.od : 0 });
 
     if (zmenaFaze) {
       await this.naplanovat(this.plnaDelka(s));
@@ -283,7 +406,10 @@ export class Mistnost {
     } else if (fazeHotova(s)) {
       // odevzdali všichni, není na co čekat
       const rezerva = s.faze === 'noc' ? REZERVA_PO_NOCI : REZERVA_PO_ODEVZDANI;
-      if (s.konecFaze == null || s.konecFaze - ted > rezerva) await this.naplanovat(rezerva);
+      if (s.konecFaze == null || s.konecFaze - ted > rezerva) {
+        this.konciDrive = true;
+        await this.naplanovat(rezerva);
+      }
     }
     await this.ulozit();
   }
@@ -310,6 +436,51 @@ export class Mistnost {
     await this.ctx.storage.deleteAlarm();
   }
 
+  // ---------------------------------------------------------------- měření
+
+  private zapsat(typ: string, extra: Partial<Udalost> = {}) {
+    zapsatUdalost(this.env, this.kod || 'bez', {
+      typ, zdroj: 'server', rezim: 'online', faze: this.stav.faze,
+      pocetHracu: this.stav.hraci.length, kolo: this.stav.kolo, zivych: zivi(this.stav).length,
+      ...extra,
+    });
+  }
+
+  /** Změna fáze a to, co se v ní rozhodlo. Detail je předchozí fáze, hodnota její trvání. */
+  private zapsatZmenuFaze(pred: Stav, ted: number) {
+    const s = this.stav;
+    const k = s.aktualni;
+    this.zapsat('faze', {
+      detail: pred.faze, detail2: this.konciDrive ? 'drive' : 'cas',
+      hodnota: this.startFaze ? ted - this.startFaze : 0,
+    });
+    this.startFaze = ted;
+    this.konciDrive = false;
+
+    const sm = k?.smeny[k.smeny.length - 1];
+    if (s.faze === 'vysledek' && sm) {
+      this.zapsat('sichta_vysledek', { detail: sm.padla ? 'padla' : 'prosla', hodnota: sm.sabotazi ?? 0, hodnota2: sm.parta.length });
+    }
+    if (s.faze === 'hlasy' && k) {
+      const hlasu = Object.keys(k.hlasy).length + Object.keys(k.hlasyStinu).length;
+      this.zapsat('rada_vysledek', {
+        detail: k.vyhosteny ? s.role[k.vyhosteny] ?? 'nikdo' : 'nikdo',
+        detail2: `${k.kandidati.length} kand, ${k.zdrzeliSe.length} zdrz, ${k.nehlasovali.length} nehlas${k.tma ? ', tma' : ''}`,
+        hodnota: hlasu, hodnota2: k.kandidati.length,
+      });
+    }
+    if (s.faze === 'rano' && k) {
+      this.zapsat('rano', { detail: k.obet ? 'vrazda' : k.odmena ?? 'nic' });
+    }
+    if (s.faze === 'konec') {
+      this.zapsat('partie_konec', {
+        detail: s.vitez ?? '', detail2: s.duvodKonce ?? '',
+        hodnota: this.startPartie ? ted - this.startPartie : 0,
+        hodnota2: s.hraci.filter((h) => !h.zivy).length,
+      });
+    }
+  }
+
   // ---------------------------------------------------------------- vnitřek
 
   private jePripojeny(id: HracId): boolean {
@@ -326,6 +497,9 @@ export class Mistnost {
       seed: this.seed,
       dalsiId: this.dalsiId,
       alarmTyp: this.alarmTyp,
+      kod: this.kod,
+      startFaze: this.startFaze,
+      startPartie: this.startPartie,
     });
   }
 
