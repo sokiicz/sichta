@@ -22,6 +22,9 @@ npx vite-node docs/persony/spust.ts <pokus> [--games N] [--seed N]
 | `citlivost` | co se stane, když se posune každá konstanta modelu | 2500 |
 | `vecer` | pět partií po sobě, stůl se učí | 3000 |
 | `nastaveni` | vypnuté vraždy, špionská varianta | 3000 |
+| `sestavy` | jiný počet sabotérů a limit šicht | 1500 |
+| `dovednost` | zkušení proti nezkušeným, každá strana zvlášť | 3000 |
+| `rozprava` | délka rozpravy × limit | 2500 |
 
 Tabulky se tisknou a ukládají do `vysledky/`. Stejný `--seed` dá stejná čísla.
 **Každý běh přepíše svůj soubor ve `vysledky/`, i zkušební s malým `--games`.**
@@ -29,12 +32,24 @@ Soubory ve `vysledky/` jsou ostré běhy se čísly z doporučených `--games`, 
 [../simulace-persony.md](../simulace-persony.md).
 Rychlost je kolem 1,5 ms na partii, `dvojice` a `citlivost` jsou nejdelší.
 
+## Krvavka (Blood on the Clocktower)
+
+Tytéž persony a stoly na enginu Trouble Brewing, pro srovnání vyváženosti a ověření modelu:
+
+```bash
+npx vite-node docs/persony/spust-krvavka.ts <pokus> [--games N]
+```
+
+Pokusy: `zaklad`, `scenare`, `persony`, `dovednost`, `rozprava`, `citlivost`, `vecer`. Výsledky v
+`vysledky/krvavka-*.md`, rozbor v [../simulace-krvavka.md](../simulace-krvavka.md).
+
 ## Soubory
 
 - `persony.ts`: dvacet person (rysy 0 až 1), robot pro kalibraci a scénáře stolů.
 - `mysl.ts`: mysl jednoho hráče, váhy nad všemi možnými množinami sabotérů.
 - `hra.ts`: ovladač partie. Volá `reducer` a `pohledPro` z `src/game/`, rozhodování hráčů je model.
 - `spust.ts`: pokusy a tabulky.
+- `krvavka.ts`, `spust-krvavka.ts`: engine Trouble Brewing a jeho pokusy.
 
 ## Co je skutečné a co model
 

@@ -16,6 +16,8 @@ zapomínají, mýlí se, nechávají se přesvědčit a lžou.
 
 ## Shrnutí
 
+*Dodatek ze stejného dne: kapitoly 14 až 16 přidávají dovednost, délku rozpravy a srovnání s Krvavkou.*
+
 1. **Lidské stoly vycházejí pod botem.** Pracanti vyhrávají 29 až 44 % při 6 až 12 hráčích. Bot v tabulce
    `design.md` §3.1 má 38 až 48 % (rozdíl 2 až 17 bodů, nejvíc při 7, 10 a 11 hráčích), dokonalý robot na
    stejném enginu 50 až 65 % (rozdíl 20 až 30 bodů).
@@ -490,3 +492,80 @@ konec: pracanti, poslední sabotér je pryč (50 minut)
 
 Pracanti chybují dvakrát (vyhostí Janu a Marka) a vyhrávají až v posledním kole. V kole 3 se rada
 nedohodla a nikdo neodešel.
+
+
+---
+
+## 14. Je Šichta hra na dovednost?
+
+Dva stoly po osmi hráčích, dva sabotéři (výchozí sestava). „Zkušení“ jsou Marek, Pavel, Filip, Šárka, Tomáš
+a Martin, „nezkušení“ Lenka, Hanka, Eliška, Božena, Tereza a Vojta. 3000 partií na políčko.
+
+| Sabotéři \ Pracanti | zkušení pracanti | nezkušení pracanti |
+|---|---|---|
+| **zkušení sabotéři** | 65 % výhra sabotérů | 97 % |
+| **nezkušení sabotéři** | 31 % | 75 % |
+
+Samí nezkušení: pracanti 26 %. Jeden zkušený pracant mezi nimi: 44 %.
+
+- **Ano, je to hra na dovednost, a hodně.** Rozdíl v dovednosti obou stran posouvá výhru od 31 % po 97 %.
+  Zkušený sabotér proti nováčkům je téměř jistota, zkušení pracanti proti nováčkovi v roli sabotéra
+  naopak vyhrávají dvě třetiny partií.
+- **Zkušený hráč opravdu může vyhrát a poznat to na sobě.** Jeden zkušený pracant mezi nováčky zvedne
+  výhru jeho týmu o 18 bodů (26 → 44 %).
+- **Začátečník se zabaví, ale nese riziko.** Jako sabotér vyhrává i nezkušený 51 až 59 % partií (kapitola 5),
+  protože mu stačí nevyčnívat do vypršení limitu. Jako pracant je nejvíc ohrožený: Lenka a Hanka
+  jsou nevinně vyhoštěny ve 39 a 42 % partií, a to „obětní beránek“ není zábava.
+- **Každá strana má cestu k výhře.** Mechanicky ale nejsou rovné. Při stejné dovednosti vycházejí sabotéři
+  lépe (65 % mezi zkušenými, 75 % mezi nezkušenými), což je tatáž nerovnováha jako v kapitole 3,
+  jen z jiné strany.
+- **Hra tedy není mechanicky neutrální.** Sabotérům nahrává hlavně časový limit: stačí přežít a vyhrávají,
+  zatímco pracanti musí najít všechny. To je ta páka, kterou jde nastavit (kapitola 7).
+
+---
+
+## 15. Délka rozpravy jako páka
+
+Délka rozpravy jako násobek výchozí (3, 4 a 5 minut podle počtu živých). V modelu kratší rozprava znamená míň
+vět a míň mluvčích, delší víc kol sbližování názorů. Limit šicht je vedle. 2500 partií na políčko.
+
+| Hráčů | Limit | ×0,5 | ×0,75 | ×1 | ×1,5 | ×2 |
+|---|---|---|---|---|---|---|
+| 7 | 3 | 28 % (19 min) | 30 % (21 min) | 30 % (24 min) | 32 % (28 min) | 34 % (33 min) |
+| 7 | 4 | 48 % (23 min) | 51 % (26 min) | 52 % (29 min) | 56 % (34 min) | 57 % (39 min) |
+| 8 | 3 | 33 % (19 min) | 35 % (22 min) | 35 % (24 min) | 39 % (29 min) | 41 % (34 min) |
+| 8 | 4 | 58 % (23 min) | 59 % (26 min) | 58 % (29 min) | 61 % (34 min) | 63 % (40 min) |
+| 10 | 5 | 30 % (34 min) | 32 % (38 min) | 31 % (43 min) | 35 % (51 min) | 38 % (60 min) |
+| 12 | 7 | 31 % (48 min) | 32 % (55 min) | 33 % (61 min) | 34 % (74 min) | 38 % (86 min) |
+
+- **Rozprava je ve Šichtě slabá páka.** Zkrácení na polovinu ubere pracantům 0 až 4 body, dvojnásobek přidá
+  4 až 7. Důvod je mechanický: velká část informace (kdo byl v partě, kolik kazilo) je na displeji
+  a nezávisí na tom, kolik se mluví. V Krvavce, kde se skoro všechno děje řečí, ubere poloviční rozprava dobrým 11 bodů
+  (kapitola 16).
+- **Limit a rozprava se doplňují.** Limit je hrubý (jedno kolo = 8 až 22 bodů), délka rozpravy jemná
+  (deset minut navíc = 4 až 6 bodů). Chceš-li stůl dolaďovat, ladí se limitem, a rozpravu nechat jako
+  nastavení pro hostitele.
+- **Sedm a osm hráčů, o deset minut déle:**
+  - **7 hráčů: limit 4, rozprava ×1** vychází na 52 % a 29 minut (o 5 minut déle).
+  - **8 hráčů: limit 3, rozprava ×2** vychází na 41 % a 34 minut (o 10 minut déle). Alternativa limit 4
+    dává 58 %, což je nad cílem 40 až 55 %, a mezi limitem 3 a 4 se nedá nic jemnějšího nastavit
+    ani rozpravou.
+  - Hodnoty jsou z modelu, ne z playtestu.
+- **Rozprava jako handicap hostitele.** Protože je páka slabá, nedá se jí zachránit nevyváženost,
+  ale jde jí dobře vyměnit trochu výhry za čas: kratší rozprava u partie, která má skončit do půl hodiny,
+  stojí pracanty nejvýš 4 body.
+
+---
+
+## 16. Krvavka (Blood on the Clocktower) se stejnými lidmi
+
+Podrobný popis a všechny tabulky jsou v [simulace-krvavka.md](simulace-krvavka.md). Shrnutí:
+
+- **Stejné persony dávají u Krvavky 40 až 51 % pro dobré** při 7 až 12 hráčích. Autoři hry uvádějí ze
+  zhruba 600 zaznamenaných partií Trouble Brewing rozdíl mezi týmy kolem 1 %, tedy přibližně 50 : 50.
+  Model, který jsem postavil pro Šichtu, tedy nevychází systematicky pesimisticky: na hře, jejíž vyváženost
+  se ověřovala stovkami partií, trefuje polovinu s odchylkou do 10 bodů.
+- **Šichta vychází při 7 až 12 hráčích o 7 až 19 bodů hůř pro pracanty než Krvavka pro dobré.** To
+  je nejpoctivější odhad toho, o kolik je dnešní nastavení nakloněné sabotérům.
+- **Dovednost působí ve Šichtě i v Krvavce skoro stejně:** nezkušení zlí proti zkušeným dobrým 31 % (Šichta)
+  a 24 % (Krvavka), zkušení zlí proti nezkušeným 97 % a 91 %.

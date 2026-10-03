@@ -400,7 +400,60 @@ function sestavy() {
   ulozit('sestavy.md', out);
 }
 
-const pokusy: Record<string, () => void> = { kalibrace, zaklad, scenare, persony, dvojice, citlivost, vecer, nastaveni, sestavy };
+/** Dovednost: kdo vyhrává, když proti sobě stojí zkušení a nezkušení? */
+function dovednost() {
+  const zkuseni = PERSONY.filter((p) => ['marek', 'pavel', 'filip', 'sarka', 'tomas', 'martin'].includes(p.klic));
+  const novacci = PERSONY.filter((p) => ['lenka', 'hanka', 'eliska', 'bozena', 'tereza', 'vojta'].includes(p.klic));
+  const n = 8;
+  const hrano = Math.max(500, HER);
+  const R = rng(SEED * 4242);
+  const vyber = (pool: Persona[]) => pool[Math.floor(R() * pool.length)]!;
+  const bunky: Record<string, Agg> = {};
+  for (const sab of ['zkušení', 'nezkušení'] as const) {
+    for (const prac of ['zkušení', 'nezkušení'] as const) {
+      const agg = new Agg();
+      for (let g = 0; g < hrano; g++) {
+        const osoby: Persona[] = [];
+        for (let i = 0; i < n; i++) osoby.push(vyber(i < 2 ? (sab === 'zkušení' ? zkuseni : novacci) : (prac === 'zkušení' ? zkuseni : novacci)));
+        const poradi = zamichej(osoby.map((_, i) => i), R);
+        const saboteri = poradi.filter((i) => i < 2 ? true : false).length ? [0, 1] : [0, 1];
+        agg.pridej(hrajPartii({ osoby, saboteri, seed: SEED * 100003 + g * 7 + (sab === 'zkušení' ? 1 : 2) * 13 + (prac === 'zkušení' ? 1 : 2) * 101 }));
+      }
+      bunky[`${sab}/${prac}`] = agg;
+    }
+  }
+  const out = hlavicka('Sabotéři \ Pracanti', 'zkušení pracanti', 'nezkušení pracanti');
+  for (const sab of ['zkušení', 'nezkušení']) {
+    out.push(radek(`${sab} sabotéři`, pct(1 - bunky[`${sab}/zkušení`]!.winrate, 0) + ' výhra sabotérů', pct(1 - bunky[`${sab}/nezkušení`]!.winrate, 0) + ' výhra sabotérů'));
+  }
+  // jeden zkušený pracant mezi nezkušenými
+  const jeden = new Agg();
+  const bez = new Agg();
+  for (let g = 0; g < hrano; g++) {
+    const sabs = [vyber(novacci), vyber(novacci)];
+    const osoby = [...sabs, ...Array.from({ length: 6 }, () => vyber(novacci))];
+    bez.pridej(hrajPartii({ osoby, saboteri: [0, 1], seed: SEED * 100003 + g * 11 + 5 }));
+    const os2 = osoby.slice(); os2[2] = vyber(zkuseni);
+    jeden.pridej(hrajPartii({ osoby: os2, saboteri: [0, 1], seed: SEED * 100003 + g * 11 + 5 }));
+  }
+  out.push('', `Samí nezkušení: pracanti ${pct(bez.winrate, 0)}. Jeden zkušený pracant mezi nimi: ${pct(jeden.winrate, 0)}.`);
+  ulozit('dovednost.md', out);
+}
+
+/** Délka rozpravy jako páka, samotná i v kombinaci s limitem. */
+function rozprava() {
+  const out = hlavicka('Hráčů', 'Limit', ...[0.5, 0.75, 1, 1.5, 2].map((d) => `rozprava ×${d}`));
+  for (const [n, l] of [[7, 3], [7, 4], [8, 3], [8, 4], [10, 5], [12, 7]] as [number, number][]) {
+    const bunky = [0.5, 0.75, 1, 1.5, 2].map((d) => {
+      const a = behScenare(MIX, n, HER, SEED + 9, { sestava: { limit: l }, knob: { rozprava: d } });
+      return `${pct(a.winrate, 0)} (${num(a.minut, 0)} min)`;
+    });
+    out.push(radek(n, l, ...bunky));
+  }
+  ulozit('rozprava.md', out);
+}
+
+const pokusy: Record<string, () => void> = { kalibrace, zaklad, scenare, persony, dvojice, citlivost, vecer, nastaveni, sestavy, dovednost, rozprava };
 const fn = pokusy[pokus];
 if (!fn) { console.error(`Neznámý pokus ${pokus}. Možnosti: ${Object.keys(pokusy).join(', ')}`); process.exit(1); }
 const t0 = Date.now();

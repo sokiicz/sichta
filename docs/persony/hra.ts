@@ -43,10 +43,12 @@ export interface Parametry {
   duvera: number;
   /** Jak často sabotéři lžou, když mluví. 0 = mlčí, 1 = podle persony. */
   klam: number;
+  /** Délka rozpravy jako násobek výchozí. Kratší znamená míň vět a míň mluvčích, delší víc kol sbližování. */
+  rozprava: number;
   /** Jak chytře sabotéři hrají (poslední kolo bez sabotáže, obětování partnera, imunita pro odhaleného). */
   chytrost: number;
 }
-export const VYCHOZI: Parametry = { detekce: 1, lhani: 1, presvedcovani: 1, sum: 1, duvera: 1, klam: 1, chytrost: 1 };
+export const VYCHOZI: Parametry = { detekce: 1, lhani: 1, presvedcovani: 1, sum: 1, duvera: 1, klam: 1, rozprava: 1, chytrost: 1 };
 
 export interface Zadani {
   osoby: Persona[];
@@ -381,8 +383,8 @@ export function hrajPartii(z: Zadani): VysledekPartie {
       if (coin(h.r.netrpelivost * 0.8 * (s.kolo > 1 ? 1 : 0.6))) akce({ typ: 'CHCI_DAL', id: idDo(i) });
     }
     const skratilo = s.faze !== 'rozprava';
-    const f = skratilo ? 0.5 : 1;
-    sekundy += skratilo ? 0.5 * cap + 5 : cap;
+    const f = (skratilo ? 0.5 : 1) * Math.min(1, K.rozprava);
+    sekundy += (skratilo ? 0.5 * cap + 5 : cap) * K.rozprava;
 
     // ---- 1) šeptanda nahlas
     const ctx = kontextSeptandy();
@@ -513,7 +515,8 @@ export function hrajPartii(z: Zadani): VysledekPartie {
       H[t]!.zloba[i] = Math.min(1.5, H[t]!.zloba[i]! + H[t]!.r.mstivost * 0.35);
       if (H[i]!.role === 'pracant' && rolePodleSedadla[t] === 'saboter') tlakNaSabotery[i]! += 1;
     }
-    for (let kolo2 = 0; kolo2 < 2; kolo2++) {
+    const kolSbl = K.rozprava >= 2 ? 4 : K.rozprava >= 1.5 ? 3 : 2;
+    for (let kolo2 = 0; kolo2 < kolSbl; kolo2++) {
       const dalsi = new Map<number, number[]>();
       for (const j of listeners) {
         const h = H[j]!;
