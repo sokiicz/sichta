@@ -68,6 +68,9 @@ vždycky přes `npm run cf:*`.
   Node 22 přes `scripts/node22.mjs`, systémový Node 20 nemá `WebSocket`
 - `node docs/balance-sim.mjs --games 6000` — simulace vyvážení
 - `node docs/balance-sim.mjs --scale` — chování nad 12 hráčů
+- `npx vite-node docs/persony/spust.ts <pokus>` — simulace s dvaceti personami,
+  hraje skutečným reducerem. Pokusy a popis v `docs/persony/README.md`, výsledky
+  v `docs/simulace-persony.md`
 - `node docs/audit-obrazovek.mjs` — statický audit návrhů obrazovek
 - `npm run cf:dev` — backend lokálně na :8787 (z bashe `cmd.exe //c "cf.cmd dev"`)
 - `npm run cf:deploy` — nasazení workeru
