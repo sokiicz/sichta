@@ -56,10 +56,13 @@ Návrhy obrazovek: https://claude.ai/artifact/RDaLmTWuJK8vqX4SbT2MrV
   stejně. Po síti seed drží worker, na jednom telefonu `useHra`.
 
 ## Node
-Systémový Node je 20.15.1, wrangler chce 22+. V `D:/ai/tools/node22` leží
-přenosný Node 22.23.2 a `cf.cmd` si ho sám dá do PATH. Systémový Node zůstal
-netknutý, ostatní projekty o tomhle nevědí. **Nepouštěj `npx wrangler` přímo**,
-vždycky přes `npm run cf:*`.
+Systémový Node je od 2026-10-03 22.23.2, takže wrangler i `WebSocket` v testech
+fungují rovnou a `npx wrangler deploy --dry-run` jde pustit přímo. V `D:/ai/tools/node22`
+zůstal přenosný Node 22.23.2, který používají `cf.cmd` a `scripts/node22.mjs`. Skripty
+`npm run cf:*`, `test:online` a `test:partie` tedy dál běží, jen už nejsou nutné. Kdyby
+build nebo test hlásil chybu nativního modulu po povýšení Node, pomůže `npm rebuild`.
+Z bashe i PowerShellu se může stát, že `npm run cf:deploy` nenajde `cf.cmd`. Pak
+`npx wrangler deploy` (po `npm run build`) nebo v PowerShellu z kořene `& .\cf.cmd deploy`.
 
 ## Sestavy a limit šicht
 Počet sabotérů, limit šicht a délka rozpravy jsou v `src/game/rules.ts` podle úrovně stolu
@@ -70,8 +73,8 @@ přeměřuje se simulací a po playtestu podle `partie_start` a `partie_konec` z
 ## Nástroje
 - `npm test` — testy herní logiky (131 testů, hrají celé partie)
 - `npm run test:online -- <adresa>` — integrační test proti workeru (lokálně
-  `http://localhost:8787` s běžícím `cf:dev`, nebo živá adresa). Bere přenosný
-  Node 22 přes `scripts/node22.mjs`, systémový Node 20 nemá `WebSocket`
+  `http://localhost:8787` s běžícím `cf:dev`, nebo živá adresa). Potřebuje Node 22+
+  kvůli `WebSocket`, běží přes `scripts/node22.mjs`, ale funguje i `node scripts/test-online.mjs <adresa>`
 - `npm run test:partie -- <adresa> [--stoly 5:smiseny:0,8:zacatecnici:1]` — boti hrají celé partie
   na více stolech najednou (počet hráčů:úroveň:posun limitu), trvá minuty až půl hodiny.
   Kontroluje limit, vítěze, odhalení rolí a shodu všech klientů. `PODROBNE=1` vypisuje fáze. Proti živé
@@ -82,6 +85,6 @@ přeměřuje se simulací a po playtestu podle `partie_start` a `partie_konec` z
   hraje skutečným reducerem. Pokusy a popis v `docs/persony/README.md`, výsledky
   v `docs/simulace-persony.md`
 - `node docs/audit-obrazovek.mjs` — statický audit návrhů obrazovek
-- `npm run cf:dev` — backend lokálně na :8787 (z bashe `cmd.exe //c "cf.cmd dev"`)
-- `npm run cf:deploy` — nasazení workeru
+- `npm run cf:dev` — backend lokálně na :8787 (nebo přímo `npx wrangler dev`)
+- `npm run cf:deploy` — nasazení workeru (nejdřív `npm run build`, deploy nebuilduje sám)
 - `npx tsc -p worker/tsconfig.json --noEmit` — typy workeru
