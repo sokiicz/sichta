@@ -30,8 +30,8 @@ co smí vidět, a spočítá hlasy. Nikdo nemusí sedět mimo hru.
   partie (viz kapitola 10).
 - **Každý svůj telefon** s připojením k internetu. Žádná instalace, žádná
   registrace. Otevře se adresa, zadá se přezdívka, hraje se.
-- **Jeden večer.** Partie s 5 až 7 lidmi trvá kolem půl hodiny, s 8 až 12
-  lidmi 45 minut až hodinu.
+- **Jeden večer.** Partie s 5 až 8 lidmi trvá čtvrt až půl hodiny, s 9 až 12
+  lidmi 45 minut až hodinu. Šatna a vysvětlování pravidel se do toho nepočítají.
 - **Zvuk na jednom telefonu.** Houkačku, která ohlašuje fáze, pouští za celý
   stůl telefon toho, kdo šichtu založil. Ostatní ji mají vypnutou.
 
@@ -61,8 +61,8 @@ Počet sabotérů je vždy veřejný. Stůl ví, kolik jich hledá.
 - **Sabotéři vyhrají**, když doběhne limit šicht a aspoň jeden sabotér žije,
   nebo když nezůstane žádný živý pracant.
 
-Limit šicht je počet kol, které má stůl k dispozici. U šesti lidí jsou to
-čtyři kola, u osmi tři. Je to jediné, co pracanty tlačí: hoří jim termín,
+Limit šicht je počet kol, které má stůl k dispozici. Podle toho, kolik vás je a
+jak jste zkušení, je to od dvou do deseti kol (u osmi lidí čtyři). Je to jediné, co pracanty tlačí: hoří jim termín,
 a proto dělají ukvapená rozhodnutí. Ta rozhodnutí jsou hra.
 
 Žádné pravidlo o rovnosti počtů není. I jeden pracant proti dvěma sabotérům
@@ -77,8 +77,8 @@ může vyhrát, protože stíny mají hlasy.
    to, co bude vidět celý stůl. Když se dvě shodnou, aplikace je rozliší
    číslem.
 3. V **šatně** je vidět, kdo už přišel. Zakladatel může nepatřičného hráče
-   vyhodit křížkem a v NASTAVENÍ zapnout nebo vypnout dvě volby (viz
-   kapitola 12).
+   vyhodit křížkem a v NASTAVENÍ vybrat, jak jste zkušení, případně posunout
+   limit šicht a zapnout nebo vypnout dvě volby (viz kapitola 12).
 4. Až je vás dost, zakladatel ťukne **ZAČÍT ŠICHTU**. Od té chvíle se nikdo
    další nepřipojí.
 
@@ -224,7 +224,9 @@ Tohle nejsou pravidla v aplikaci, tohle si hlídáte sami.
 | Volba | Výchozí | Co dělá |
 |---|---|---|
 | Šeptanda pro všechny | zapnuto | Vypnuto: sabotér větu nedostane a musí si vymyslet i to, že nějakou má. Ostřejší varianta. |
-| Noční vraždy | zapnuto | Vypnuto: odchází se jen vyhoštěním. Delší hra, častěji dojde na limit šicht. |
+| Noční vraždy | zapnuto | Vypnuto: odchází se jen vyhoštěním. Delší hra, častěji dojde na limit šicht. Pozor: sabotéři si pak berou imunitu a pracantům to nepomůže, spíš naopak. |
+| Kdo sedí u stolu | smíšený stůl | Začátečníci, smíšený stůl, zkušení. Podle toho se nastaví limit šicht a délka rozpravy, aby měl každý stůl zhruba stejnou šanci. |
+| Limit šicht | doporučený | O kolo kratší nebo o jedno až dvě delší. Kratší hraje sabotérům do karet, delší pracantům. Obrazovka ukáže odhad výher a času. Pravidlo palce: dvě partie za sebou vyhráli jen sabotéři, přidejte kolo. Jen pracanti, ubrat. |
 
 **Přehled a zápisník.** Na tlačítkách vlevo a vpravo dole. Přehled ukazuje
 historii šicht, kdo byl v partě, jak dopadly rady, a připomene ti tvou roli.

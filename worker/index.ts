@@ -14,7 +14,7 @@
  */
 
 import { fazeHotova, prazdnyStav, reducer, zivi } from '../src/game/machine';
-import { delkaFaze, MAX_HRACU } from '../src/game/rules';
+import { delkaFaze, MAX_HRACU, nasobekRozpravy } from '../src/game/rules';
 import { pohledPro } from '../src/game/pohled';
 import { smiPoslat } from '../src/game/opravneni';
 import { ABECEDA_KODU, DELKA_KODU, platnyKod } from '../src/game/kod';
@@ -315,7 +315,7 @@ export class Mistnost {
     this.zapsat('akce', { hrac: s.hracId, detail: a.typ, hodnota: this.startFaze ? ted - this.startFaze : 0 });
     if (a.typ === 'ZACIT') {
       this.startPartie = ted;
-      this.zapsat('partie_start', { detail: `${this.stav.pocetSaboteru} sab`, hodnota: this.stav.limitSicht, pocetHracu: this.stav.hraci.length });
+      this.zapsat('partie_start', { detail: `${this.stav.pocetSaboteru} sab`, detail2: `${this.stav.nastaveni.uroven}, posun ${this.stav.nastaveni.limitPosun}`, hodnota: this.stav.limitSicht, pocetHracu: this.stav.hraci.length });
     }
     if (a.typ === 'ZNOVU') this.zapsat('znovu', { hodnota: this.startPartie ? ted - this.startPartie : 0 });
     if (a.typ === 'VYBRAT_ODMENU') this.zapsat('noc_odmena', { detail: a.odmena });
@@ -362,7 +362,8 @@ export class Mistnost {
   }
 
   private plnaDelka(s: Stav): number {
-    return delkaFaze(s.faze, zivi(s).length, s.aktualni?.kandidati.length ?? 2) * 1000;
+    const nasobek = nasobekRozpravy(s.hraci.length, s.nastaveni.uroven);
+    return delkaFaze(s.faze, zivi(s).length, s.aktualni?.kandidati.length ?? 2, nasobek) * 1000;
   }
 
   /**

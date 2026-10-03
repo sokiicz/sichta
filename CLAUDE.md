@@ -61,8 +61,14 @@ přenosný Node 22.23.2 a `cf.cmd` si ho sám dá do PATH. Systémový Node zůs
 netknutý, ostatní projekty o tomhle nevědí. **Nepouštěj `npx wrangler` přímo**,
 vždycky přes `npm run cf:*`.
 
+## Sestavy a limit šicht
+Počet sabotérů, limit šicht a délka rozpravy jsou v `src/game/rules.ts` podle úrovně stolu
+(začátečníci, smíšený, zkušení). Zakladatel může limit o kolo posunout, `ODHAD` v tom souboru
+je z `npx vite-node docs/persony/spust.ts odhad --uroven <úroveň>`. Čísla se nemění od oka:
+přeměřuje se simulací a po playtestu podle `partie_start` a `partie_konec` z měření.
+
 ## Nástroje
-- `npm test` — testy herní logiky (114 testů, hrají celé partie)
+- `npm test` — testy herní logiky (131 testů, hrají celé partie)
 - `npm run test:online -- <adresa>` — integrační test proti workeru (lokálně
   `http://localhost:8787` s běžícím `cf:dev`, nebo živá adresa). Bere přenosný
   Node 22 přes `scripts/node22.mjs`, systémový Node 20 nemá `WebSocket`

@@ -17,7 +17,7 @@ import type { Odchod } from './ui/prehled';
 import { useBdeni } from './ui/bdeni';
 import { nastavitKontext, zaznamenat } from './ui/telemetrie';
 
-import { delkaFaze } from './game/rules';
+import { delkaFaze, nasobekRozpravy } from './game/rules';
 import type { HracId, Odmena } from './game/types';
 import type { KoloVerejne, Pohled } from './game/pohled';
 import { useHra, type Rezim } from './net/useHra';
@@ -244,7 +244,9 @@ export default function App() {
   };
 
   const zivych = pohled?.hraci.filter((h) => h.zivy).length ?? 0;
-  const delka = pohled ? delkaFaze(pohled.faze, zivych, pohled.stul.kandidati.length) : 0;
+  const delka = pohled
+    ? delkaFaze(pohled.faze, zivych, pohled.stul.kandidati.length, nasobekRozpravy(pohled.hraci.length, pohled.nastaveni.uroven))
+    : 0;
   const cekaSeNaLidi = !jeOnline && naRade !== null;
   const bezi = krok === 'hra' && !cekaSeNaLidi && !pohled?.pauza;
   const zbyvaServer = useOdpocetServeru(jeOnline ? pohled?.konecFaze ?? null : null, posunHodin);
@@ -269,11 +271,13 @@ export default function App() {
 
   if (krok === 'nastaveni') {
     const nast = jeOnline ? pohled?.nastaveni : hotseatStav?.nastaveni;
+    const vSatne = (jeOnline ? pohled?.hraci : hotseatStav?.hraci)?.filter((h) => h.pripojeny).length ?? 0;
     if (nast) {
       return (
         <NastaveniHry
           nastaveni={nast}
-          onPrepnout={(klic, hodnota) => poslat({ typ: 'ZMENIT_NASTAVENI', nastaveni: { [klic]: hodnota } })}
+          pocetHracu={vSatne}
+          onZmenit={(zmena) => poslat({ typ: 'ZMENIT_NASTAVENI', nastaveni: zmena })}
           onZpet={() => setKrok(jeOnline ? 'hra' : 'satna')}
         />
       );
@@ -351,6 +355,7 @@ export default function App() {
     return (
       <Satna
         kod={null}
+        nastaveni={hotseatStav?.nastaveni}
         hraci={(hotseatStav?.hraci ?? []).map((h) => ({ id: h.id, jmeno: h.jmeno, zakladatel: h.zakladatel, pripojeny: true }))}
         jaId={null}
         jsemZakladatel
@@ -379,6 +384,7 @@ export default function App() {
     return (
       <Satna
         kod={kod}
+        nastaveni={p.nastaveni}
         odkaz={kod ? `${window.location.origin}${window.location.pathname}?k=${kod}` : null}
         hraci={p.hraci}
         jaId={p.ja.id}

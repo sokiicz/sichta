@@ -2,7 +2,7 @@
 
 **Stav:** v1 podle kódu v `src/game/`, 2026-09-20 · **Název:** Šichta (EN: *Shift*) · **Týmy:** Pracanti vs. Sabotéři
 **Formát:** fyzická společenská hra pro 5–12 lidí v jedné místnosti, řízená PWA na telefonech hráčů. Bez vypravěče.
-**Délka partie:** 25–30 min (5–7 hráčů) · 45–60 min (8–12) · **Stack:** Vite PWA + Cloudflare Durable Objects (jeden worker servíruje appku i drží stav) · **Repo slug:** `sichta`
+**Délka partie (odhad ze simulace):** 13 až 30 min (5–8 hráčů) · 45 až 65 min (9–12) · **Stack:** Vite PWA + Cloudflare Durable Objects (jeden worker servíruje appku i drží stav) · **Repo slug:** `sichta`
 
 ---
 
@@ -32,18 +32,39 @@ Aplikace nahrazuje vypravěče: rozdá role, hlídá fáze, ukazuje každému p�
 
 ### 3.1 Sestava
 
-*Čísla drží `src/game/rules.ts` a tahle tabulka je z něj opsaná. Jsou výsledek simulace (§9), ne odhad: přeměřeno 2026-09-20 na jednu směnu za kolo a strop tří pravd v šeptandě. Sloupec Bot je výhra bota-pracanta, pásmo 35–60 % je použitelné. Poslední sloupec je podíl partií, které skončí vyčerpáním limitu šicht.*
+*Čísla drží `src/game/rules.ts` a tahle tabulka je z něj opsaná. Přeměřeno 2026-10-03 simulací s dvaceti personami na skutečném reduceru ([simulace-persony.md](simulace-persony.md)), cíl zhruba 48 % výher pracantů.*
 
-| Hráčů | Sabotérů | Limit šicht | Bot | Limit padne |
+Dřívější tabulka vycházela z bota s dokonalou dedukcí. Lidé ji nehrají a proti zkušenému sabotérovi vyhrávají pracanti míň (29 až 38 % při 7 až 12 hráčích). Zkušený sabotér proti nováčkům navíc vyhrává skoro vždy a naopak (97 % proti 31 %). Proto má stůl **úroveň**, kterou volí zakladatel v nastavení, a pro každou je zvlášť limit šicht a délka rozpravy. Počet sabotérů je stejný pro všechny úrovně, protože o jednoho víc nebo míň je skok o 30 až 60 bodů.
+
+V každé buňce: **limit šicht** · násobek délky rozpravy (když není 1) · odhad výher pracantů · odhad délky partie.
+
+| Hráčů | Sab. | Začátečníci | Smíšený stůl | Zkušení |
 |---|---|---|---|---|
-| 5 | 1 | 3 | neměřitelné | |
-| 6 | 2 | 4 | 48 % | 6 % |
-| 7 | 2 | 3 | 46 % | 33 % |
-| 8 | 2 | 3 | 44 % | 54 % |
-| 9 | 3 | 6 | 40 % | 3 % |
-| 10 | 3 | 5 | 47 % | 20 % |
-| 11 | 3 | 5 | 46 % | 33 % |
-| 12 | 4 | 7 | 38 % | 6 % |
+| 5 | 1 | 3 · 75 % · 17 min | 2 · 63 % · 13 min | 2 · 59 % · 13 min |
+| 6 | 2 | 6 · 47 % · 31 min | 5 · 55 % · 29 min | 4 ×1,5 · 51 % · 30 min |
+| 7 | 2 | 4 · 41 % · 30 min | 4 ×0,75 · 50 % · 26 min | 4 ×0,75 · 47 % · 25 min |
+| 8 | 2 | 4 ×0,75 · 50 % · 28 min | 4 ×0,75 · 56 % · 26 min | 4 ×0,75 · 53 % · 25 min |
+| 9 | 3 | 8 · 45 % · 49 min | 7 · 47 % · 47 min | 8 · 50 % · 47 min |
+| 10 | 3 | 7 ×0,75 · 51 % · 47 min | 6 · 46 % · 48 min | 7 ×0,75 · 54 % · 44 min |
+| 11 | 3 | 6 · 48 % · 51 min | 6 ×0,75 · 50 % · 45 min | 6 ×1,5 · 45 % · 58 min |
+| 12 | 4 | 10 ×0,75 · 45 % · 62 min | 10 ×0,75 · 50 % · 62 min | 9 · 48 % · 67 min |
+
+*Smíšený stůl je výchozí: někdo hrál podobné hry, ostatní ne. Odhad je pro typický stůl dané úrovně a je z modelu, ne z playtestu. Dvanáctka a pětka jsou na hrubé hraně: u dvanácti limit nad devět skoro nic nemění (hra skončí vybitím dřív), pětka má jednoho sabotéra a vyvážit ji nejde.*
+
+#### Knoflík na limit šicht
+
+Zakladatel může v nastavení limit o jedno kolo zkrátit nebo o jedno až dvě prodloužit. Obrazovka u každé změny ukáže odhad výher a času a řekne, komu to nahrává:
+
+- **Kratší limit hraje sabotérům do karet.** Pracanti mají míň rad na hledání. Hodí se, když pracanti vyhrávají skoro pokaždé.
+- **Delší limit hraje pracantům do karet.** Víc rad, ale i víc času na chyby a delší hra. Hodí se, když vyhrávají sabotéři.
+- **Jedno kolo je 8 až 22 bodů.** Je to nejsilnější páka, kterou hra má. U osmi hráčů je skok z kola na kolo (dole 34 %, nahoře 74 %) největší.
+- **Pravidlo palce:** dvě partie za sebou vyhráli jen sabotéři, přidejte kolo. Jen pracanti, ubrat.
+
+Rozsah posunu je −1 až +2, limit nikdy neklesne pod dvě kola. Server nesmyslné hodnoty zahodí.
+
+#### Délka rozpravy jako páka
+
+Ve Šichtě je slabá (poloviční rozprava ubere pracantům 0 až 4 body, dvojnásobná přidá 4 až 7), protože velká část informace je v mechanice a ne v řeči. V Krvavce je silná (−11 bodů). Proto se rozprava používá jen k jemnému dolaďování v tabulce, ne jako samostatná volba pro hráče.
 
 **Jedna směna za kolo pro všechny stoly.** Dvě směny (§3.2.2) zůstávají v kódu jako experiment, žádná sestava je nepoužívá. Tempo úbytku drží nabídka odměn (§3.2.1) a to, že vražda nejde dvě kola po sobě.
 
@@ -266,7 +287,9 @@ nejrychlejší způsob, jak partu naštvat.
 | Volba | Výchozí | Co dělá |
 |---|---|---|
 | Šeptanda pro všechny | zapnuto | Vypnuto je špionská varianta: sabotér nedostane větu a musí si vymyslet i to, že nějakou má. Ostřejší, ale stačí jednou zaváhat. |
-| Noční vraždy | zapnuté | Vypnuto se odchází jen vyhoštěním. Hra je delší, zůstane víc lidí a častěji dojde na limit šicht. Hodí se k vypnuté šeptandě pro sabotéry. |
+| Noční vraždy | zapnuté | Vypnuto se odchází jen vyhoštěním. Hra je delší a častěji dojde na limit šicht. **Pozor:** sabotéři si pak berou imunitu, která zablokuje celou radu, takže pracanti vyhrávají o 7 až 10 bodů míň. Nehodí se jako protiváha k silným sabotérům. |
+| Úroveň stolu | smíšený | Začátečníci, smíšený stůl, zkušení. Mění limit šicht a délku rozpravy (viz §3.1). |
+| Posun limitu | 0 | −1 až +2 kola proti doporučení. Obrazovka ukáže odhad a komu to nahrává. |
 
 ### 3.6 Stíny (vyřazení hráči)
 

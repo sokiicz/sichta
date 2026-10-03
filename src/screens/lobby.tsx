@@ -6,6 +6,7 @@ import {
 import { MAX_HRACU, MIN_HRACU, sestavaPro } from '../game/rules';
 import { ABECEDA_KODU, DELKA_KODU } from '../game/kod';
 import { jeDivokaSestava } from '../game/rules';
+import type { Nastaveni } from '../game/types';
 import { zaznamenat } from '../ui/telemetrie';
 
 // ---------------------------------------------------------------- úvod
@@ -148,10 +149,13 @@ export function Prezdivka({ vychozi, onHotovo, onZpet, onPravidla }: {
 export interface HracVSatne { id: string; jmeno: string; zakladatel: boolean; pripojeny: boolean }
 
 export function Satna({
-  kod, odkaz, hraci, jaId, jsemZakladatel, onZacit, onPridat, onNastaveniHry, onPravidla, onVyhodit,
+  kod, odkaz, nastaveni, hraci, jaId, jsemZakladatel, onZacit, onPridat, onNastaveniHry, onPravidla, onVyhodit,
 }: {
   /** Kód k nahlášení. null na jednom telefonu, kde ho není komu posílat. */
-  kod: string | null; odkaz?: string | null; hraci: HracVSatne[]; jaId: string | null; jsemZakladatel: boolean;
+  kod: string | null; odkaz?: string | null;
+  /** Nastavení stolu: z něj se počítá limit šicht v přehledu. */
+  nastaveni?: Nastaveni;
+  hraci: HracVSatne[]; jaId: string | null; jsemZakladatel: boolean;
   onZacit: () => void;
   /** Jen na jednom telefonu: další hráč se přidává tady, ne přes odkaz. */
   onPridat?: () => void;
@@ -161,7 +165,7 @@ export function Satna({
 }) {
   const pritomni = hraci.filter((h) => h.pripojeny);
   const dost = pritomni.length >= MIN_HRACU;
-  const sestava = dost ? sestavaPro(pritomni.length) : null;
+  const sestava = dost ? sestavaPro(pritomni.length, nastaveni?.uroven, nastaveni?.limitPosun) : null;
   const muzePridat = Boolean(onPridat) && hraci.length < MAX_HRACU;
   const [poslano, setPoslano] = useState(false);
 

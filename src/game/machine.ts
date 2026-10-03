@@ -1,5 +1,5 @@
 import type { Akce, Faze, Hrac, HracId, Kolo, Odmena, Role, Smenaz, Stav, Tym } from './types';
-import { MAX_HRACU, MIN_HRACU, sestavaPro, velikostParty } from './rules';
+import { cistaUroven, cistyPosun, MAX_HRACU, MIN_HRACU, sestavaPro, UROVEN_VYCHOZI, velikostParty } from './rules';
 import { rng, vyber, type Rng } from './random';
 import { rozdatSeptandu } from './septanda';
 
@@ -12,7 +12,7 @@ export function prazdnyStav(): Stav {
     pocetSaboteru: 0,
     limitSicht: 0,
     smenyNaKolo: 1,
-    nastaveni: { septandaProSabotery: true, vrazdy: true },
+    nastaveni: { septandaProSabotery: true, vrazdy: true, uroven: UROVEN_VYCHOZI, limitPosun: 0 },
     kolo: 0,
     aktualni: null,
     historie: [],
@@ -26,6 +26,19 @@ export function prazdnyStav(): Stav {
     konecFaze: null,
     partie: null,
   };
+}
+
+/**
+ * Zprávy chodí po síti, takže se nastavení nebere, jak přišlo: jen známé klíče
+ * a jen hodnoty, které dávají smysl. Poškozená zpráva neshodí partii.
+ */
+function cisteNastaveni(n: Partial<Stav['nastaveni']>): Partial<Stav['nastaveni']> {
+  const out: Partial<Stav['nastaveni']> = {};
+  if (typeof n.septandaProSabotery === 'boolean') out.septandaProSabotery = n.septandaProSabotery;
+  if (typeof n.vrazdy === 'boolean') out.vrazdy = n.vrazdy;
+  if ('uroven' in n) out.uroven = cistaUroven(n.uroven);
+  if ('limitPosun' in n) out.limitPosun = cistyPosun(n.limitPosun);
+  return out;
 }
 
 // ---------------------------------------------------------------- dotazy
@@ -391,7 +404,7 @@ export function reducer(s: Stav, a: Akce, seed: number): Stav {
 
     case 'ZMENIT_NASTAVENI':
       if (s.faze !== 'satna') return s;
-      return { ...s, nastaveni: { ...s.nastaveni, ...a.nastaveni } };
+      return { ...s, nastaveni: { ...s.nastaveni, ...cisteNastaveni(a.nastaveni) } };
 
     case 'ZACIT': {
       if (s.faze !== 'satna') return s;
@@ -399,7 +412,7 @@ export function reducer(s: Stav, a: Akce, seed: number): Stav {
       const hraci = zajistitZakladatele(s.hraci.filter((h) => h.pripojeny));
       if (hraci.length < MIN_HRACU || hraci.length > MAX_HRACU) return s;
       const rr = rng(a.seed ?? seed);
-      const sestava = sestavaPro(hraci.length);
+      const sestava = sestavaPro(hraci.length, s.nastaveni.uroven, s.nastaveni.limitPosun);
       const ids = hraci.map((h) => h.id);
       const vybrani = vyber(ids, sestava.saboteri, rr);
       const role: Record<HracId, Role> = {};

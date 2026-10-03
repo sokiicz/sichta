@@ -25,6 +25,8 @@ npx vite-node docs/persony/spust.ts <pokus> [--games N] [--seed N]
 | `sestavy` | jiný počet sabotérů a limit šicht | 1500 |
 | `dovednost` | zkušení proti nezkušeným, každá strana zvlášť | 3000 |
 | `rozprava` | délka rozpravy × limit | 2500 |
+| `uroven` | mřížka limit × rozprava pro jednu úroveň stolu (`--uroven zacatecnici\|smiseny\|zkuseni`) | 1200 |
+| `odhad` | doporučená sestava a posun limitu −1 až +2, z toho se píše `ODHAD` v `rules.ts` (`--uroven`) | 4000 |
 
 Tabulky se tisknou a ukládají do `vysledky/`. Stejný `--seed` dá stejná čísla.
 **Každý běh přepíše svůj soubor ve `vysledky/`, i zkušební s malým `--games`.**

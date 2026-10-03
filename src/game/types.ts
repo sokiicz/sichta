@@ -145,7 +145,22 @@ export interface Nastaveni {
    * přicházejí o nejsilnější odměnu, takže se to hodí tam, kde mají navrch.
    */
   vrazdy: boolean;
+  /**
+   * Kdo u stolu sedí. Podle toho se ladí limit šicht a délka rozpravy, protože
+   * zkušený sabotér proti nováčkům vyhrává skoro vždy a naopak. Čísla jsou
+   * ze simulace s personami, viz docs/simulace-persony.md.
+   */
+  uroven: Uroven;
+  /**
+   * Posun limitu šicht proti doporučení pro danou velikost stolu a úroveň,
+   * v celých kolech od -1 do +2. Víc kol hraje pracantům do karet, míň
+   * sabotérům. Kolik to je, říká obrazovka nastavení.
+   */
+  limitPosun: number;
 }
+
+/** Zkušenost stolu. Smíšený je výchozí: někdo zkušený, ostatní běžní lidé. */
+export type Uroven = 'zacatecnici' | 'smiseny' | 'zkuseni';
 
 /**
  * Odpočet stojí, dokud se někdo nevrátí nebo zakladatel nerozhodne.

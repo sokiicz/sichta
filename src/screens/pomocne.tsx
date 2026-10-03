@@ -28,6 +28,7 @@ interface Karta {
 }
 
 /** Sestavy z rules.ts, ať se pravidla nerozejdou s kódem. */
+/** Počty pro smíšený stůl, výchozí úroveň. Ostatní úrovně a posun limitu jsou v nastavení. */
 const SESTAVY_TEXT = Array.from({ length: MAX_HRACU - MIN_HRACU + 1 }, (_, i) => {
   const n = MIN_HRACU + i;
   const s = sestavaPro(n);
@@ -88,7 +89,7 @@ const PRAVIDLA: Karta[] = [
   },
   {
     nadpis: 'KOLIK VÁS JE',
-    text: 'Parta na šichtu je vždy zhruba půlka živých a nikdy celý stůl. Pětka je tréninková partie, od šesti se hra rozjede.',
+    text: 'Parta na šichtu je vždy zhruba půlka živých a nikdy celý stůl. Pětka je tréninková partie, od šesti se hra rozjede. Počet šicht níž platí pro smíšený stůl. Zakladatel v nastavení vybere, jak zkušení jste, a může limit o kolo zkrátit nebo prodloužit.',
     kroky: SESTAVY_TEXT,
   },
   {

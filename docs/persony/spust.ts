@@ -12,8 +12,9 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { hrajPartii, type Parametry, type VysledekPartie, type Zadani } from './hra';
-import { PERSONY, ROBOT, SCENARE, type Persona, type Rysy, type Scenar } from './persony';
+import { PERSONY, ROBOT, SCENARE, UROVNE, type Persona, type Rysy, type Scenar } from './persony';
 import { rng } from '../../src/game/random';
+import { sestavaPro, type Uroven } from '../../src/game/rules';
 
 const argv = process.argv.slice(2);
 const pokus = argv[0] ?? 'zaklad';
@@ -453,7 +454,56 @@ function rozprava() {
   ulozit('rozprava.md', out);
 }
 
-const pokusy: Record<string, () => void> = { kalibrace, zaklad, scenare, persony, dvojice, citlivost, vecer, nastaveni, sestavy, dovednost, rozprava };
+/**
+ * Mřížka limit × délka rozpravy pro jednu úroveň stolu, všechny velikosti. Výstup je tabulka
+ * a JSON, ze kterého se píše `rules.ts`.
+ *   npx vite-node docs/persony/spust.ts uroven --uroven smiseny --games 1200
+ */
+function uroven() {
+  const iu = argv.indexOf('--uroven');
+  const klic = iu >= 0 ? argv[iu + 1]! : 'smiseny';
+  const sc = UROVNE.find((u) => u.klic === klic);
+  if (!sc) { console.error('Neznámá úroveň'); process.exit(1); }
+  const out = hlavicka('Hráčů', 'Sab.', 'Limit', 'Rozprava', 'Pracanti', '±', 'Minut', 'Limit padne');
+  const json: { n: number; sab: number; limit: number; rozprava: number; win: number; minut: number; limitPadne: number }[] = [];
+  for (const n of VELIKOSTI) {
+    const l0 = LIMIT[n]!;
+    for (const l of [l0 - 1, l0, l0 + 1, l0 + 2, l0 + 3].filter((x) => x >= 2)) {
+      for (const r of [0.75, 1, 1.5, 2]) {
+        const a = behScenare(sc, n, HER, SEED + 21, { sestava: { limit: l }, knob: { rozprava: r } });
+        out.push(radek(n, SABOTERI[n]!, l, `×${r}`, pct(a.winrate), pct(a.ci, 1), num(a.minut, 0), pct(a.podil(a.konec.limit), 0)));
+        json.push({ n, sab: SABOTERI[n]!, limit: l, rozprava: r, win: a.winrate, minut: a.minut, limitPadne: a.podil(a.konec.limit) });
+      }
+    }
+  }
+  writeFileSync(`${VYSTUP}uroven-${klic}.json`, JSON.stringify(json), 'utf8');
+  ulozit(`uroven-${klic}.md`, out);
+}
+
+/**
+ * Odhady pro `ODHAD` v rules.ts: doporučená sestava a posun limitu -1 až +2 na stole dané úrovně.
+ *   npx vite-node docs/persony/spust.ts odhad --uroven smiseny --games 3000
+ */
+function odhad() {
+  const iu = argv.indexOf('--uroven');
+  const klic = (iu >= 0 ? argv[iu + 1]! : 'smiseny') as Uroven;
+  const sc = UROVNE.find((u) => u.klic === klic)!;
+  const out = hlavicka('Hráčů', 'Limit', 'Rozprava', 'Posun', 'Pracanti', '±', 'Minut', 'Limit padne');
+  const data: Record<number, Record<number, [number, number]>> = {};
+  for (const n of VELIKOSTI) {
+    data[n] = {};
+    for (const posun of [-1, 0, 1, 2]) {
+      const s = sestavaPro(n, klic, posun);
+      const a = behScenare(sc, n, HER, SEED + 33, { sestava: { limit: s.limitSicht }, knob: { rozprava: s.rozprava } });
+      data[n]![posun] = [Math.round(a.winrate * 100) / 100, Math.round(a.minut)];
+      out.push(radek(n, s.limitSicht, `×${s.rozprava}`, posun >= 0 ? `+${posun}` : posun, pct(a.winrate), pct(a.ci, 1), num(a.minut, 0), pct(a.podil(a.konec.limit), 0)));
+    }
+  }
+  writeFileSync(`${VYSTUP}odhad-${klic}.json`, JSON.stringify(data), 'utf8');
+  ulozit(`odhad-${klic}.md`, out);
+}
+
+const pokusy: Record<string, () => void> = { odhad, uroven, kalibrace, zaklad, scenare, persony, dvojice, citlivost, vecer, nastaveni, sestavy, dovednost, rozprava };
 const fn = pokusy[pokus];
 if (!fn) { console.error(`Neznámý pokus ${pokus}. Možnosti: ${Object.keys(pokusy).join(', ')}`); process.exit(1); }
 const t0 = Date.now();

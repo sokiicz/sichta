@@ -16,7 +16,7 @@ zapomínají, mýlí se, nechávají se přesvědčit a lžou.
 
 ## Shrnutí
 
-*Dodatek ze stejného dne: kapitoly 14 až 16 přidávají dovednost, délku rozpravy a srovnání s Krvavkou.*
+*Kapitoly 1 až 16 měří sestavy z 2026-09-20. Dodatek ze stejného dne: kapitoly 14 až 16 přidávají dovednost, délku rozpravy a srovnání s Krvavkou. Kapitola 17 popisuje, co se podle toho změnilo v `rules.ts`.*
 
 1. **Lidské stoly vycházejí pod botem.** Pracanti vyhrávají 29 až 44 % při 6 až 12 hráčích. Bot v tabulce
    `design.md` §3.1 má 38 až 48 % (rozdíl 2 až 17 bodů, nejvíc při 7, 10 a 11 hráčích), dokonalý robot na
@@ -569,3 +569,104 @@ Podrobný popis a všechny tabulky jsou v [simulace-krvavka.md](simulace-krvavka
   je nejpoctivější odhad toho, o kolik je dnešní nastavení nakloněné sabotérům.
 - **Dovednost působí ve Šichtě i v Krvavce skoro stejně:** nezkušení zlí proti zkušeným dobrým 31 % (Šichta)
   a 24 % (Krvavka), zkušení zlí proti nezkušeným 97 % a 91 %.
+
+
+---
+
+## 17. Co se změnilo v `rules.ts`
+
+Kapitoly 1 až 16 měří sestavy z 2026-09-20. Po nich se změnilo tohle (commit s `rules.ts`, `types.ts`,
+`machine.ts`, obrazovkou nastavení a testy):
+
+- **Tři úrovně stolu** (začátečníci, smíšený, zkušení) s vlastním limitem šicht a délkou rozpravy.
+  Smíšený je výchozí. Počet sabotérů je pro všechny úrovně stejný.
+- **Knoflík na limit** v nastavení: −1 až +2 kola proti doporučení, s odhadem výher a času a s větou,
+  komu změna nahrává.
+- **Server hlídá vstup:** úroveň a posun jdou po síti, takže reducer bere jen známé hodnoty, posun
+  ořízne na rozsah, nesmysl změní na výchozí.
+- **Měření:** `partie_start` zapisuje do `detail2` úroveň a posun, aby šla výhra pracantů po playtestu
+  porovnat s odhadem.
+
+### Nové sestavy
+
+V buňce: limit šicht · násobek rozpravy (když není 1) · odhad výher pracantů · odhad času.
+Každé políčko je 4000 partií na stole typickém pro danou úroveň (±1,5 bodu).
+
+| Hráčů | Sab. | Začátečníci | Smíšený stůl | Zkušení |
+|---|---|---|---|---|
+| 5 | 1 | 3 · 75 % · 17 min | 2 · 63 % · 13 min | 2 · 59 % · 13 min |
+| 6 | 2 | 6 · 47 % · 31 min | 5 · 55 % · 29 min | 4 ×1,5 · 51 % · 30 min |
+| 7 | 2 | 4 · 41 % · 30 min | 4 ×0,75 · 50 % · 26 min | 4 ×0,75 · 47 % · 25 min |
+| 8 | 2 | 4 ×0,75 · 50 % · 28 min | 4 ×0,75 · 56 % · 26 min | 4 ×0,75 · 53 % · 25 min |
+| 9 | 3 | 8 · 45 % · 49 min | 7 · 47 % · 47 min | 8 · 50 % · 47 min |
+| 10 | 3 | 7 ×0,75 · 51 % · 47 min | 6 · 46 % · 48 min | 7 ×0,75 · 54 % · 44 min |
+| 11 | 3 | 6 · 48 % · 51 min | 6 ×0,75 · 50 % · 45 min | 6 ×1,5 · 45 % · 58 min |
+| 12 | 4 | 10 ×0,75 · 45 % · 62 min | 10 ×0,75 · 50 % · 62 min | 9 · 48 % · 67 min |
+
+Co se tím opravilo proti kapitole 3: smíšený stůl při 7 až 12 hráčích vychází na 46 až 56 % místo 29 až 38 %.
+Co zůstalo na hraně:
+
+- **Osm hráčů (50 až 56 %) a šest hráčů se smíšeným stolem (55 %).** Mezi dvěma celými koly není nic jemnějšího
+  a rozprava to neutáhne (kapitola 15), takže se vybralo to bližší ke 48 %.
+- **Pětka (59 až 75 %).** Jeden sabotér a krátký limit, vyvážit ji nejde. U začátečníků zůstalo kolo navíc,
+  ať se hra naučí na trochu snazší partii.
+- **Dvanáctka:** nad devět až deset kol už limit nic nemění, protože hra skončí vybitím dřív. Posun +1 a +2
+  se tam v odhadu projeví jen o 2 až 3 body.
+- **Čas u 7 až 8 hráčů je 25 až 28 minut**, tedy o 1 až 4 minuty víc než dřív, ne o deset. Delší hru
+  by dalo jen kolo navíc nebo dvojnásobná rozprava a oboje posune výhru pracantů nad 60 %. Kdo chce delší
+  partii u sedmi, může zvolit +1 (64 %, 28 min), ale hra pak hraje pracantům.
+
+### Co udělá knoflík
+
+Odhad výher pracantů (a času) při posunu limitu, pro tři úrovně. Doporučení je tučně.
+
+**Smíšený stůl**
+
+| Hráčů | −1 kolo | doporučeno | +1 kolo | +2 kola |
+|---|---|---|---|---|
+| 5 | 63 % (13 min) | **63 %** (13 min) | 86 % (16 min) | 94 % (17 min) |
+| 6 | 45 % (27 min) | **55 %** (29 min) | 58 % (30 min) | 60 % (31 min) |
+| 7 | 30 % (21 min) | **50 %** (26 min) | 64 % (28 min) | 70 % (30 min) |
+| 8 | 34 % (22 min) | **56 %** (26 min) | 74 % (29 min) | 83 % (30 min) |
+| 9 | 39 % (45 min) | **47 %** (47 min) | 51 % (48 min) | 53 % (49 min) |
+| 10 | 33 % (43 min) | **46 %** (48 min) | 57 % (51 min) | 64 % (52 min) |
+| 11 | 35 % (40 min) | **50 %** (45 min) | 62 % (48 min) | 69 % (50 min) |
+| 12 | 46 % (61 min) | **50 %** (62 min) | 52 % (62 min) | 53 % (63 min) |
+
+**Začátečníci**
+
+| Hráčů | −1 kolo | doporučeno | +1 kolo | +2 kola |
+|---|---|---|---|---|
+| 5 | 50 % (14 min) | **75 %** (17 min) | 89 % (19 min) | 93 % (20 min) |
+| 6 | 43 % (30 min) | **47 %** (31 min) | 49 % (32 min) | 50 % (32 min) |
+| 7 | 22 % (24 min) | **41 %** (30 min) | 55 % (33 min) | 62 % (35 min) |
+| 8 | 27 % (23 min) | **50 %** (28 min) | 68 % (31 min) | 78 % (33 min) |
+| 9 | 41 % (48 min) | **45 %** (49 min) | 47 % (49 min) | 48 % (49 min) |
+| 10 | 41 % (44 min) | **51 %** (47 min) | 57 % (48 min) | 61 % (49 min) |
+| 11 | 31 % (46 min) | **48 %** (51 min) | 61 % (55 min) | 69 % (57 min) |
+| 12 | 42 % (61 min) | **45 %** (62 min) | 47 % (63 min) | 47 % (63 min) |
+
+**Zkušení**
+
+| Hráčů | −1 kolo | doporučeno | +1 kolo | +2 kola |
+|---|---|---|---|---|
+| 5 | 59 % (13 min) | **59 %** (13 min) | 88 % (15 min) | 96 % (16 min) |
+| 6 | 32 % (25 min) | **51 %** (30 min) | 62 % (32 min) | 66 % (34 min) |
+| 7 | 28 % (20 min) | **47 %** (25 min) | 63 % (27 min) | 70 % (28 min) |
+| 8 | 33 % (21 min) | **53 %** (25 min) | 72 % (28 min) | 81 % (29 min) |
+| 9 | 45 % (46 min) | **50 %** (47 min) | 53 % (48 min) | 53 % (48 min) |
+| 10 | 41 % (41 min) | **54 %** (44 min) | 62 % (46 min) | 65 % (46 min) |
+| 11 | 31 % (52 min) | **45 %** (58 min) | 59 % (63 min) | 68 % (65 min) |
+| 12 | 38 % (65 min) | **48 %** (67 min) | 52 % (69 min) | 56 % (69 min) |
+
+Čtení: u osmi smíšených hráčů přidané kolo posune pracanty z 56 na 74 % (a o tři minuty), ubrané kolo je stáhne
+na 34 %. U šesti, devíti a dvanácti je krok nahoru malý (2 až 4 body), protože hra stejně končí dřív, než limit dojde. Krok dolů je větší (4 až 10 bodů).
+
+### Co jsem neudělal
+
+- Rozprava není samostatná volba pro hráče. Ve Šichtě je slabá páka, takže se používá jen v tabulce.
+- Nespouštěl jsem `npm run test:online` (potřebuje běžící worker). Běžné testy (131) a build procházejí,
+  nastavení jsem prošel v prohlížeči na jednom telefonu (výběr úrovně, posun, texty, rozměry), screenshot
+  se v tomhle okně nepovedl.
+- Čísla jsou z modelu person. Po prvním playtestu se přeměří: výhra pracantů podle počtu hráčů, úrovně a
+  posunu, a limit se doladí podle skutečných dat.

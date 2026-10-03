@@ -72,7 +72,7 @@ změnit i dotazy níž.
 | `hrac_navrat` | `pauza`, když se vrátil do pauzy | |
 | `hrac_odpojen` | `pauza`, když tím hru zastavil | |
 | `pozdni_prichozi` | `hra-bezi`, `plno`, `jmeno` | |
-| `partie_start` | `N sab` | limit šicht |
+| `partie_start` | `N sab`; detail2 `úroveň, posun N` | limit šicht |
 | `akce` | typ akce | ms od začátku fáze |
 | `akce_bez_efektu` | typ akce, kterou reducer zahodil | |
 | `akce_zamitnuta` | typ akce, kterou hráč nesměl poslat | |
@@ -194,3 +194,16 @@ GROUP BY typ, faze ORDER BY n DESC
 
 - Protokol partie (úkol 6.2 v [ukoly.md](ukoly.md)) může vzniknout z těchhle dat, když se k `partie_konec` přidá `sichta_vysledek` a `rada_vysledek` za stejný `index1`.
 - Ladění sestav v `rules.ts`: poměr `partie_konec` podle vítěze a počtu hráčů je přesně to, co simulace odhadovala a playtest má změřit.
+  Od 2026-10-03 se u `partie_start` zapisuje i úroveň stolu a posun limitu v `detail2`, takže jde výhru
+  pracantů rozpočítat na počet hráčů × úroveň × posun a porovnat s odhadem v `ODHAD` v `rules.ts`:
+
+  ```sql
+  SELECT s.blob6 AS uroven_a_posun, s.double3 AS limit_sicht, k.blob5 AS vitez, count() AS partii
+  FROM sichta_udalosti s
+  JOIN sichta_udalosti k ON k.index1 = s.index1
+  WHERE s.blob1 = 'partie_start' AND k.blob1 = 'partie_konec'
+  GROUP BY uroven_a_posun, limit_sicht, vitez
+  ```
+
+  Dotaz je náčrt: join přes místnost spáruje i opakované partie (`ZNOVU`), takže pro čistý výsledek
+  ho omez na jednu partii v místnosti. Počet hráčů je ve sloupci `double5` u `partie_start`, ověř to proti tabulce sloupců výš.

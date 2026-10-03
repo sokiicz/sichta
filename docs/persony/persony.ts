@@ -234,3 +234,29 @@ export const SCENARE: Scenar[] = [
     velikosti: [6, 8, 10],
     vahy: {}, pary: 1, vecer: 5 },
 ];
+
+/**
+ * Tři úrovně stolu, podle kterých se ladí sestava. Zkušení jsou ti, kdo hrají sociální dedukce
+ * pravidelně (Marek, Pavel, Filip, Šárka, Tomáš, Martin). Smíšený stůl má 1 až 2 zkušené, zbytek
+ * běžní lidé a nováčci. Začátečníci hrají poprvé a nikdo nezná pravidla ani triky.
+ */
+const ZKUSENI = ['marek', 'pavel', 'filip', 'sarka', 'tomas', 'martin'];
+export const UROVNE: Scenar[] = [
+  {
+    klic: 'zacatecnici', nazev: 'Začátečníci', popis: 'Nikdo hru nezná.',
+    velikosti: [5, 6, 7, 8, 9, 10, 11, 12],
+    vahy: { lenka: 3, hanka: 2, eliska: 2, bozena: 1, tereza: 1, ivo: 1, petr: 1, kuba: 1, jana: 1 }, pary: 1,
+    uprava: { pravidla: 0.5, analytika: 0.85, lhani: 0.8, detekce: 0.8 },
+  },
+  {
+    klic: 'smiseny', nazev: 'Smíšený stůl', popis: 'Někdo zkušený, ostatní běžní lidé a nováčci.',
+    velikosti: [5, 6, 7, 8, 9, 10, 11, 12],
+    vahy: Object.fromEntries(PERSONY.map((x) => [x.klic, ZKUSENI.includes(x.klic) ? 0.5 : 1])), pary: 1,
+  },
+  {
+    klic: 'zkuseni', nazev: 'Samí zkušení', popis: 'Všichni hrají sociální dedukce pravidelně.',
+    velikosti: [5, 6, 7, 8, 9, 10, 11, 12],
+    vahy: Object.fromEntries(ZKUSENI.map((k) => [k, 1])), pary: 0,
+    uprava: { pravidla: 1.15, pamet: 1.1 },
+  },
+];
