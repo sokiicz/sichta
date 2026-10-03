@@ -72,6 +72,10 @@ přeměřuje se simulací a po playtestu podle `partie_start` a `partie_konec` z
 - `npm run test:online -- <adresa>` — integrační test proti workeru (lokálně
   `http://localhost:8787` s běžícím `cf:dev`, nebo živá adresa). Bere přenosný
   Node 22 přes `scripts/node22.mjs`, systémový Node 20 nemá `WebSocket`
+- `npm run test:partie -- <adresa> [--stoly 5:smiseny:0,8:zacatecnici:1]` — boti hrají celé partie
+  na více stolech najednou (počet hráčů:úroveň:posun limitu), trvá minuty až půl hodiny.
+  Kontroluje limit, vítěze, odhalení rolí a shodu všech klientů. `PODROBNE=1` vypisuje fáze. Proti živé
+  adrese zapisuje do měření události (partie_start a partie_konec), takže to se počítá jako testovací provoz
 - `node docs/balance-sim.mjs --games 6000` — simulace vyvážení
 - `node docs/balance-sim.mjs --scale` — chování nad 12 hráčů
 - `npx vite-node docs/persony/spust.ts <pokus>` — simulace s dvaceti personami,

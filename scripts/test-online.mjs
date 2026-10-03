@@ -93,12 +93,31 @@ async function main() {
   await cekej(700);
   overit(zakladatel.pohled?.faze === 'satna', 'start od nezakladatele se zahodí');
 
+  // ---------------------------------------------------------------- nastavení stolu
+  console.log('\nNastavení stolu');
+  overit(zakladatel.pohled?.nastaveni?.uroven === 'smiseny' && zakladatel.pohled?.nastaveni?.limitPosun === 0, 'výchozí je smíšený stůl bez posunu');
+  poslat(jiny, { typ: 'ZMENIT_NASTAVENI', nastaveni: { uroven: 'zkuseni', limitPosun: 2 } });
+  await cekej(700);
+  overit(zakladatel.pohled?.nastaveni?.uroven === 'smiseny', 'nastavení od nezakladatele se zahodí');
+  poslat(zakladatel, { typ: 'ZMENIT_NASTAVENI', nastaveni: { uroven: 'neexistuje', limitPosun: 99, vrazdy: 'ano' } });
+  await cekej(700);
+  overit(zakladatel.pohled?.nastaveni?.uroven === 'smiseny' && zakladatel.pohled?.nastaveni?.limitPosun === 2 && zakladatel.pohled?.nastaveni?.vrazdy === true,
+    `nesmysl po síti se vyčistí (úroveň ${zakladatel.pohled?.nastaveni?.uroven}, posun ${zakladatel.pohled?.nastaveni?.limitPosun}, vraždy ${zakladatel.pohled?.nastaveni?.vrazdy})`);
+  // zkušení, o kolo víc: pro 6 hráčů doporučení 4 kola a rozprava x1,5, tedy limit 5 a rozprava 270 s
+  poslat(zakladatel, { typ: 'ZMENIT_NASTAVENI', nastaveni: { uroven: 'zkuseni', limitPosun: 1 } });
+  await cekej(700);
+  overit(klienti.every((k) => k.pohled?.nastaveni?.uroven === 'zkuseni' && k.pohled?.nastaveni?.limitPosun === 1), 'změnu nastavení vidí všichni v šatně');
+
   // ---------------------------------------------------------------- role a náhoda
   console.log('\nRozdání rolí');
   poslat(zakladatel, { typ: 'ZACIT' });
   await cekej(900);
   overit(zakladatel.pohled?.faze === 'rozdani', `zakladatel hru spustí (fáze ${zakladatel.pohled?.faze})`);
   overit(typeof zakladatel.pohled?.partie === 'string', 'partie má identifikátor');
+  overit(zakladatel.pohled?.limitSicht === 5, `limit šicht vychází z úrovně a posunu: zkušení, 6 hráčů, +1 = 5 (je ${zakladatel.pohled?.limitSicht})`);
+  poslat(zakladatel, { typ: 'ZMENIT_NASTAVENI', nastaveni: { uroven: 'zacatecnici', limitPosun: 0 } });
+  await cekej(500);
+  overit(zakladatel.pohled?.nastaveni?.uroven === 'zkuseni' && zakladatel.pohled?.limitSicht === 5, 'po rozdání rolí se nastavení nemění');
 
   const saboteri = klienti.filter((k) => k.pohled?.ja?.role === 'saboter');
   const pracanti = klienti.filter((k) => k.pohled?.ja?.role === 'pracant');
@@ -160,6 +179,8 @@ async function main() {
     await pockatNaFazi(zakladatel, 'rozprava', 30000);
   }
   overit(zakladatel.pohled.stul.hlasy.length === 0 && zakladatel.pohled.stul.historie.length === 1, 'historie nese hotové kolo, hlasy zatím žádné');
+  const rozpravaSekund = (zakladatel.pohled.konecFaze - Date.now()) / 1000;
+  overit(rozpravaSekund > 245 && rozpravaSekund < 275, `rozprava trvá 270 s podle úrovně (zbývá ${Math.round(rozpravaSekund)} s)`);
   for (const k of klienti.slice(0, 4)) poslat(k, { typ: 'CHCI_DAL', id: id(k) });
   overit((await pockatNaFazi(zakladatel, 'nominace', 3000)) >= 0, 'nadpoloviční většina utne rozpravu');
 
