@@ -182,18 +182,23 @@ Podezřelí ze všech nocí se na konci sečtou do ceny **Nejlepší čuch**.
 
 ## 10. Kolik vás je
 
-| Hráčů | Sabotérů | Limit šicht |
-|---|---|---|
-| 5 | 1 | 3 |
-| 6 | 2 | 4 |
-| 7 | 2 | 3 |
-| 8 | 2 | 3 |
-| 9 | 3 | 6 |
-| 10 | 3 | 5 |
-| 11 | 3 | 5 |
-| 12 | 4 | 7 |
+Limit šicht závisí i na tom, jak jste zkušení. Zakladatel to vybere v
+nastavení (začátečníci, smíšený stůl, zkušení), výchozí je smíšený stůl.
+Limit jde ještě posunout o kolo dolů nebo o jedno až dvě nahoru.
 
-Čísla jsou výsledek simulace tisíců partií, ne odhad. Parta na šichtu je
+| Hráčů | Sabotérů | Začátečníci | Smíšený stůl | Zkušení |
+|---|---|---|---|---|
+| 5 | 1 | 3 | 2 | 2 |
+| 6 | 2 | 6 | 5 | 4 |
+| 7 | 2 | 4 | 4 | 4 |
+| 8 | 2 | 4 | 4 | 4 |
+| 9 | 3 | 8 | 7 | 8 |
+| 10 | 3 | 7 | 6 | 7 |
+| 11 | 3 | 6 | 6 | 6 |
+| 12 | 4 | 10 | 10 | 9 |
+
+Čísla jsou výsledek simulace tisíců partií s modelovanými hráči, ne odhad.
+Přesná tabulka včetně odhadu výher a času je v [design.md](design.md) §3.1. Parta na šichtu je
 vždy zhruba půlka živých a nikdy celý stůl. Při 8 živých jdou 4, při 5
 živých 3, při 3 živých 2.
 
